@@ -12,7 +12,7 @@
         errorMessage = ''; // Reset error message
 
         try {
-            const response = await axios.post('api/v1/login', {
+            const response = await axios.post('/api/v1/login', {
                 user_name: username,
                 password: password
             }, {

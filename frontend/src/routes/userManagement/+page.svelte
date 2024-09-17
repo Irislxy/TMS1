@@ -182,7 +182,7 @@
         const group_name = { group_name: groupName };
 
         try {
-            const response = await axios.post('http://localhost:3000/api/v1/creategroup',
+            const response = await axios.post('/api/v1/creategroup',
                 group_name, 
             {
                 withCredentials: true

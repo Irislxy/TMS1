@@ -16,7 +16,7 @@
 
   const logOut = async () => {
     try {
-      await axios.post('http://localhost:3000/api/v1/logout', {}, {
+      await axios.post('/api/v1/logout', {}, {
         withCredentials: true // Ensure the cookie is sent along with the request
       });
       
@@ -30,7 +30,7 @@
   // Fetch current user data
   onMount(async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/v1/user', {
+      const response = await axios.get('/api/v1/user', {
         withCredentials: true
       });
       user.user_name = response.data.user.username;

@@ -3,7 +3,7 @@ const ErrorHandler = require("../utils/errorHandler")
 const pool = require("../config/db_connection")
 
 exports.isAuthenticated = async (req, res, next) => {
-  // let token
+  let token
   // If token exists
   if (req.cookies.token) {
     token = req.cookies.token // Extract token from the cookies
@@ -14,7 +14,7 @@ exports.isAuthenticated = async (req, res, next) => {
 
   // Verify the token
   try {
-    var decoded = jwt.verify(token, process.env.JWT_SECRET)
+    var decoded = await jwt.verify(token, process.env.JWT_SECRET)
     if (
       !decoded || // empty token (wrong secret)
       decoded.browser != req.headers["user-agent"] || // user-agent or ip no match
@@ -38,7 +38,7 @@ exports.isAuthenticated = async (req, res, next) => {
       }
       // User not found or disabled
       if (results.length == 0 || !results[0].active) {
-        return next(new ErrorHandler("User not found", 404))
+        return next(new ErrorHandler("User is not found or disabled", 404))
       }
     })
   } catch (error) {

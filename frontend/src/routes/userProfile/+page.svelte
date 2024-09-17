@@ -12,7 +12,7 @@
   // Fetch current user data
   onMount(async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/v1/user', {
+      const response = await axios.get('/api/v1/user', {
         withCredentials: true
       });
       user.user_name = response.data.user.username;
@@ -32,7 +32,7 @@
     const updateData = { user_name: user.user_name, email: newEmail };
 
     try {
-      const response = await axios.put('http://localhost:3000/api/v1/updateEmail',
+      const response = await axios.put('/api/v1/updateEmail',
         updateData, 
       {
         withCredentials: true
@@ -55,7 +55,7 @@
     const updateData = { user_name: user.user_name, password: newPassword };
 
     try {
-      const response = await axios.put('http://localhost:3000/api/v1/updatePassword',
+      const response = await axios.put('/api/v1/updatePassword',
         updateData,
       {
         withCredentials: true
