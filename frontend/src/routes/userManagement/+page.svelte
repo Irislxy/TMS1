@@ -76,6 +76,7 @@
         } catch (error) {
             if (error.response.data.errMessage == "User is not found or disabled") {
                 goto('/');
+                errorMessage = 'Invalid credentials. Please login again';
             }
             errorMessage = 'Failed to fetch user profile';
         }
@@ -86,6 +87,7 @@
         await checkStatus();
         originalData = { ...user }; // Save original data in case of cancel
         editableUser = { ...user }; // Save edited data
+        editableUser.groups = editableUser.groups ? editableUser.groups.split(', ') : [];
         console.log('Editing User:', editableUser); 
     };
 
@@ -119,6 +121,13 @@
 
         // If email is changed
         if (editableUser.email !== originalData.email) {
+            
+            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            if (!emailRegex.test(editableUser.email)) {
+                errorMessage = 'Email must be in the correct format';
+                return;
+            }
+
             try {
                 const response = await axios.put('/api/v1/updateEmail', {
                     user_name: editableUser.user_name,
@@ -126,6 +135,7 @@
                 }, { withCredentials: true });
 
                 if (response.status === 200) {
+                    errorMessage = '';
                     successMessage = 'Email updated successfully!';
                 }
             } catch (error) {
@@ -157,7 +167,7 @@
                     group_name: editableUser.groups
                 }, { withCredentials: true });
 
-                if (response.status === 200) {
+                if (response.status === 201) {
                     successMessage = 'Group updated successfully!';
                 }
             } catch (error) {
@@ -181,6 +191,42 @@
         errorMessage = ''; // Reset error message
         successMessage = ''; // Reset success message
 
+        // Check if username and password are provided
+        if (!newUser.user_name || !newUser.password) {
+            errorMessage = '';
+            errorMessage = 'Please provide username and password';
+            return;
+        }
+
+        // Check if username is alphanumeric
+        const usernameRegex = /^[a-zA-Z0-9]+$/; // Regex for alphanumeric characters
+        if (!usernameRegex.test(newUser.user_name)) {
+            errorMessage = '';
+            errorMessage = 'Username must be alphanumeric';
+            return; // Exit the function if the username is invalid
+        }
+
+        // Check if password meet requirements
+        const passwordRegex = /((?=.*\d)(?=.*[a-zA-Z])(?=.*[\W\_]).{8,10})/g;
+        if (!passwordRegex.test(newUser.password)) {
+            errorMessage = '';
+            errorMessage = 'Password does not meet requirements';
+            return;
+        }
+
+        // Check if email meet requirements
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailRegex.test(newUser.email)) {
+            errorMessage = '';
+            errorMessage = 'Email must be in the correct format';
+            return;
+        }
+
+        // Check if user is active
+        if (newUser.active === '0') {
+            newUser.active = 0;
+        }
+
         try {
             const response = await axios.post('/api/v1/newUser', newUser, 
             {
@@ -190,10 +236,6 @@
             if (response.status === 201) {
                 successMessage = 'User created successfully!';
 
-                // Map over selected group IDs to find the corresponding group names
-                // const selectedGroup = groups.find(group => group.group_id === newUser.group_id);
-                // const groupName = selectedGroup ? selectedGroup.group_name : 'No Group';
-
                 // Push the new user into the users array with the group name
                 users.push({
                     user_name: newUser.user_name,
@@ -201,7 +243,7 @@
                     active: newUser.active,
                     groups: newUser.group_name
                 });
-                //console.log(newUser.group_id);
+                //console.log(newUser.group_name);
                 users = users;
                 newUser = { user_name: '', password: '', email: '', active: 1, group_name: []  }; // Reset the form
                 groupLabels = [];
@@ -233,6 +275,7 @@
                 withCredentials: true
             });
             
+            errorMessage = '';
             successMessage = 'Group Created';
             //console.log(response.data);
             groupNames.push({ label: response.data.data.group_name }); 
@@ -251,7 +294,7 @@
         }
     };
 
-    $: newUser.group_name = groupLabels.map(group => group.label.toString());
+    $: newUser.group_name = groupLabels;
 </script>
 
 <div class="user-management">
@@ -361,7 +404,7 @@
                                     <option value="0">Inactive</option>
                                 </select>
                             {:else}
-                                {user.active ? 'Yes' : 'No'}
+                                {user.active == 1 ? 'Active' : 'Inactive'}
                             {/if}
                         </td>
         
@@ -384,7 +427,7 @@
                             {#if editableUser && editableUser.user_name === user.user_name}
                                 <button on:click={handleSave}>Save</button>
                                 <button on:click={handleCancel}>Cancel</button>
-                            {:else}
+                            {:else if user.user_name !== "admin"}
                                 <button on:click={() => handleEdit(user)}>Edit</button>
                             {/if}
                         </td>

@@ -99,7 +99,7 @@ exports.updateGroup = async (req, res, next) => {
 
     if (groupsToAdd.length > 0) {
       const values = groupsToAdd.map((id) => `(${id}, '${user_name}')`).join(", ")
-      await pool.query(`INSERT INTO user_group (group_id, user_name) VALUES ${values}`)
+      await pool.execute(`INSERT INTO user_group (group_id, user_name) VALUES ${values}`)
     }
 
     res.status(201).json({ message: `User '${user_name}' has been assigned group(s) successfully.`, success: true })
