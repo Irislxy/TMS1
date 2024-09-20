@@ -81,28 +81,28 @@ exports.updateGroup = async (req, res, next) => {
   const { user_name, group_name } = req.body
 
   try {
-    // Step 1: Find group_id from group_list based on group_name
-    const getGroupIdQuery = "SELECT group_id FROM group_list WHERE group_name = ?"
-    const [groupResults] = await pool.execute(getGroupIdQuery, [group_name])
+    const [currentGroups] = await pool.promise().query("SELECT group_id FROM user_group WHERE user_name = ?", [user_name])
+    const currentGroupIds = new Set(currentGroups.map((group) => group.group_id)) //map each group_name to group_id in user_group
 
-    const group_id = groupResults[0].group_id
+    const [allGroups] = await pool.promise().query("SELECT group_id, group_name FROM group_list")
+    const groupMap = new Map(allGroups.map((group) => [group.group_name, group.group_id])) //map each group_name to group_id in group_list
 
-    // Step 2: Update user_group table with the new group_id for the user
-    const updateGroupQuery = "UPDATE user_group SET group_id = ? WHERE user_name = ?"
-    const [updateResults] = await pool.execute(updateGroupQuery, [group_id, user_name])
+    const newGroupIds = new Set(group_name.map((name) => groupMap.get(name))) //convert group_name to group_id
 
-    if (updateResults.affectedRows === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      })
+    const groupsToDelete = [...currentGroupIds].filter((id) => !newGroupIds.has(id))
+    const groupsToAdd = [...newGroupIds].filter((id) => !currentGroupIds.has(id))
+
+    if (groupsToDelete.length > 0) {
+      const idsToDelete = groupsToDelete.join(", ")
+      await pool.execute(`DELETE FROM user_group WHERE user_name = ? AND group_id IN (${idsToDelete})`, [user_name])
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Updated assigned group",
-      data: { user_name: user_name, group_name: group_name, group_id: group_id }
-    })
+    if (groupsToAdd.length > 0) {
+      const values = groupsToAdd.map((id) => `(${id}, '${user_name}')`).join(", ")
+      await pool.query(`INSERT INTO user_group (group_id, user_name) VALUES ${values}`)
+    }
+
+    res.status(201).json({ message: `User '${user_name}' has been assigned group(s) successfully.`, success: true })
   } catch (error) {
     return next(new ErrorHandler("Error while creating group", 500))
   }

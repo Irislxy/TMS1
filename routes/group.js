@@ -7,6 +7,6 @@ const groupController = require("../controllers/groupController")
 
 router.post("/createGroup", isAuthenticated, groupController.createGroup)
 router.get("/getAllGroup", isAuthenticated, groupController.getAllGroup)
-router.put("/updateGroup", isAuthenticated, groupController.updateGroup)
+router.patch("/updateGroup", isAuthenticated, groupController.updateGroup)
 
 module.exports = router

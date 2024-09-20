@@ -50,7 +50,7 @@
             if (response.status === 200) {
                 // Map groupNames to label-value pairs
                 groupNames = response.data.data.map(group => {
-                    return { label: group.group_name };
+                    return group.group_name;
                 });
                 //console.log(groupNames);
             } else {
@@ -98,7 +98,7 @@
     // Function to handle save button
     const handleSave = async (event) => {
         await checkStatus();
-        //console.log("editableUser:", editableUser);
+        console.log("editableUser:", editableUser);
         //console.log("originalData:", originalData); 
 
         // Disable the user if the active status is set to inactive (0)
@@ -150,11 +150,11 @@
         }
 
         // If group is changed
-        if (editableUser.group_id !== originalData.group_id) {
+        if (editableUser.groups !== originalData.groups) {
             try {
-                const response = await axios.put('/api/v1/updateGroup', {
+                const response = await axios.patch('/api/v1/updateGroup', {
                     user_name: editableUser.user_name,
-                    group_id: editableUser.group_id
+                    group_name: editableUser.groups
                 }, { withCredentials: true });
 
                 if (response.status === 200) {
