@@ -5,8 +5,8 @@ const { isAuthenticated } = require("../middlewares/verifyJWT")
 // Importing group controller methods
 const groupController = require("../controllers/groupController")
 
-router.post("/creategroup", isAuthenticated, groupController.createGroup)
-router.get("/allgroup", isAuthenticated, groupController.getAllGroup)
-router.put("/updategroup", isAuthenticated, groupController.updateGroup)
+router.post("/createGroup", isAuthenticated, groupController.createGroup)
+router.get("/getAllGroup", isAuthenticated, groupController.getAllGroup)
+router.put("/updateGroup", isAuthenticated, groupController.updateGroup)
 
 module.exports = router

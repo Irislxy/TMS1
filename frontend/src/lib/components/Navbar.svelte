@@ -5,12 +5,15 @@
 
   export let pageTitle = 'App List'; // Default page title
   export let user;
+  // let isAdmin = false;
 
   const goToProfile = () => {
+    checkStatus();
     goto("/userProfile/"); // Navigate to the profile page
   };
 
   const goToUserManagement = () => {
+    checkStatus();
     goto("/userManagement/"); // Navigate to the user management page (admin only)
   };
 
@@ -29,17 +32,26 @@
 
   // Fetch current user data
   onMount(async () => {
+    await checkStatus();
+  });
+
+  const checkStatus = async () => {
     try {
-      const response = await axios.get('/api/v1/user', {
+      const response = await axios.get('/api/v1/getUserDetails', {
         withCredentials: true
       });
       user.user_name = response.data.user.username;
       user.email = response.data.user.email;
-
+      user.isAdmin = response.data.user.isAdmin
+      //console.log(user);
     } catch (error) {
-      errorMessage = 'Failed to fetch user profile';
+      //console.log(error);
+      if (error.response.data.errMessage == "User is not found or disabled") {
+        logOut();
+      }
+      // errorMessage = 'Failed to fetch user profile';
     }
-  });
+  }
 </script>
 
 <nav class="navbar">
@@ -62,7 +74,10 @@
       <!-- Dropdown menu -->
       <div class="dropdown-menu">
         <button on:click={goToProfile}>View / Edit Profile</button>
-        <button on:click={goToUserManagement}>User Management</button>
+        <!-- Show the User Management button only if the user is an admin -->
+        {#if user.isAdmin}
+          <button on:click={goToUserManagement}>User Management</button>
+        {/if}
         <button on:click={logOut}>Log Out</button>
       </div>
     </div>

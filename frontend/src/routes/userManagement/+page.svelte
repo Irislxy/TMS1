@@ -1,84 +1,127 @@
 <script>
     import { onMount } from 'svelte';
     import { axios } from '$lib/config';
+    import { goto } from '$app/navigation';
     import Modal from '$lib/components/Modal.svelte';
+    import MultiSelect from 'svelte-multiselect';
+    let selected = [];
 
-    let users = [];
+    let user = { user_name: '', email: '', active: 1, isAdmin: false };
+    let users = []; // to store the fetched users with groups
+    let groupNames = []; // to store the fetched groups
+    let groupName = '';
+    let groupLabels = [];
     let errorMessage = '';
     let successMessage = '';
-    let newUser = { user_name: '', password: '', email: '', active: 1, group_id: '' };
-    let groups = []; // to store the fetched groups
+    let newUser = { user_name: '', password: '', email: '', active: 1, group_name: [] };
     let showModal = false;
-    let groupName = '';
     let editableUser = null;
     let originalData = {};
 
-    // Fetch all groups for dropdown
-    // Fetch all users for display
+    $:{
+        console.log(groupLabels);
+    }
     onMount(async () => {
+        await fetchGroupNames();
+        await checkStatus();
         try {
-            // const response = await axios.get('/api/v1/allgroup', {
-            //     withCredentials: true // Include cookies for authentication
-            // });
-            const response2 = await axios.get('/api/v1/alluserwithgrp', {
+            // Fetch all users for display
+            const response2 = await axios.get('/api/v1/getAllUserWithGroup', {
                 withCredentials: true // Include cookies for authentication
             });
-            if (response.status === 200) {
-                groups = response.data.data;
-            } else {
-                errorMessage = 'Failed to load groups.';
-            }
+
             if (response2.status === 200) {
                 users = response2.data.data;
+                console.log(users);
             } else {
                 errorMessage = 'Failed to load users.';
             }
         } catch (error) {
-            errorMessage = 'Error fetching groups';
+            errorMessage = 'Error fetching data';
         }
-        
     });
 
+    const fetchGroupNames = async () => {
+        try {
+            // Fetch all groups for dropdown
+            const response = await axios.get('/api/v1/getAllGroup', {
+                withCredentials: true // Include cookies for authentication
+            });
+            if (response.status === 200) {
+                // Map groupNames to label-value pairs
+                groupNames = response.data.data.map(group => {
+                    return { label: group.group_name };
+                });
+                //console.log(groupNames);
+            } else {
+                errorMessage = 'Failed to load groups.';
+            }
+        } catch (error) {
+            errorMessage = 'Error fetching data';
+        }
+    }
+
+    const checkStatus = async () => {
+        try {
+            const response = await axios.get('/api/v1/getUserDetails', {
+                withCredentials: true
+            });
+            user.user_name = response.data.user.username;
+            user.email = response.data.user.email;
+            user.active = response.data.user.active;
+            user.isAdmin = response.data.user.isAdmin;
+            if (user.isAdmin == false) {
+                goto('/appList');
+            }
+        } catch (error) {
+            if (error.response.data.errMessage == "User is not found or disabled") {
+                goto('/');
+            }
+            errorMessage = 'Failed to fetch user profile';
+        }
+    };
+
     // Function to handle edit button click
-    const handleEdit = (user) => {
+    const handleEdit = async (user) => {
+        await checkStatus();
         originalData = { ...user }; // Save original data in case of cancel
-        editableUser = { ...user }; // Set the user to be edited // Set the user to be edited
-        // console.log('Editing User:', editableUser); 
+        editableUser = { ...user }; // Save edited data
+        console.log('Editing User:', editableUser); 
     };
 
     // Function to handle cancel button
-    const handleCancel = () => {
+    const handleCancel = async () => {
+        await checkStatus();
         editableUser = null; // Cancel editing
-        errorMessage = ''; // Clear any error messages
     };
 
     // Function to handle save button
     const handleSave = async (event) => {
-        event.preventDefault(); // Prevent default form submission
-        console.log("editableUser:", editableUser); // Debug log to check editableUser
-        console.log("originalData:", originalData); 
+        await checkStatus();
+        //console.log("editableUser:", editableUser);
+        //console.log("originalData:", originalData); 
 
         // Disable the user if the active status is set to inactive (0)
         if (editableUser.active == 0 && originalData.active == 1) {
             try {
-                const response = await axios.patch('/api/v1/disableuser', {
+                const response = await axios.patch('/api/v1/disableUser', {
                     user_name: editableUser.user_name,
                     active: editableUser.active
                 }, { withCredentials: true });
 
                 if (response.status === 200) {
-                    successMessage = 'User disabled successfully!';
+                    successMessage = 'User disabled';
                 }
             } catch (error) {
-                errorMessage = 'Failed to disable user.';
-                console.error('Error disabling user:', error);
+                errorMessage = 'Error disabling user';
             }
         }
 
         // If email is changed
         if (editableUser.email !== originalData.email) {
             try {
-                const response = await axios.put(`/api/v1/updateEmail/${editableUser.user_name}`, {
+                const response = await axios.put('/api/v1/updateEmail', {
+                    user_name: editableUser.user_name,
                     email: editableUser.email
                 }, { withCredentials: true });
 
@@ -86,13 +129,12 @@
                     successMessage = 'Email updated successfully!';
                 }
             } catch (error) {
-                errorMessage = 'Failed to update email.';
-                console.error('Error updating email:', error);
+                errorMessage = 'Error updating email';
             }
         }
 
         // If password is changed
-        if (editableUser.password && editableUser.password !== originalData.password) {
+        if (editableUser.password !== originalData.password) {
             try {
                 const response = await axios.put('/api/v1/updatePassword', {
                     user_name: editableUser.user_name,
@@ -103,15 +145,14 @@
                     successMessage = 'Password updated successfully!';
                 }
             } catch (error) {
-                errorMessage = 'Failed to update password.';
-                console.error('Error updating password:', error);
+                errorMessage = 'Error updating password';
             }
         }
 
         // If group is changed
         if (editableUser.group_id !== originalData.group_id) {
             try {
-                const response = await axios.put('/api/v1/updategroup', {
+                const response = await axios.put('/api/v1/updateGroup', {
                     user_name: editableUser.user_name,
                     group_id: editableUser.group_id
                 }, { withCredentials: true });
@@ -120,8 +161,7 @@
                     successMessage = 'Group updated successfully!';
                 }
             } catch (error) {
-                errorMessage = 'Failed to update group.';
-                console.error('Error updating group:', error);
+                errorMessage = 'Error updating group';
             }
         }
 
@@ -129,6 +169,7 @@
         const index = users.findIndex(u => u.user_name === editableUser.user_name);
         if (index !== -1) {
             users[index] = { ...editableUser };
+            users = users; 
         }
 
         editableUser = null; // Exit edit mode
@@ -136,36 +177,34 @@
 
     // Function to create a new user
     const handleCreateUser = async (event) => {
-        event.preventDefault(); // Prevent form submission
+        await checkStatus();
         errorMessage = ''; // Reset error message
         successMessage = ''; // Reset success message
 
         try {
-            const response = await axios.post('/api/v1/newuser', newUser, 
+            const response = await axios.post('/api/v1/newUser', newUser, 
             {
                 withCredentials: true
             });
 
-            console.log("Response from server:", response);
-
             if (response.status === 201) {
                 successMessage = 'User created successfully!';
 
-                // Find the corresponding group_name based on group_id
-                const selectedGroup = groups.find(group => group.group_id === newUser.group_id);
-                const groupName = selectedGroup ? selectedGroup.group_name : 'No Group';
-
-                console.log("Selected group name:", groupName);
+                // Map over selected group IDs to find the corresponding group names
+                // const selectedGroup = groups.find(group => group.group_id === newUser.group_id);
+                // const groupName = selectedGroup ? selectedGroup.group_name : 'No Group';
 
                 // Push the new user into the users array with the group name
                 users.push({
                     user_name: newUser.user_name,
                     email: newUser.email,
                     active: newUser.active,
-                    group_name: groupName
+                    groups: newUser.group_name
                 });
+                //console.log(newUser.group_id);
                 users = users;
-                newUser = { user_name: '', password: '', email: '', active: 1, group_id: ''  }; // Reset the form
+                newUser = { user_name: '', password: '', email: '', active: 1, group_name: []  }; // Reset the form
+                groupLabels = [];
             }
         } catch (error) {
             errorMessage = 'Failed to create user. Please check the details.';
@@ -175,28 +214,44 @@
 
     // Function to handle create group button click
     const handleCreateGroup = async (event) => {
-        event.preventDefault(); // Prevent default form submission
+        await checkStatus();
         errorMessage = '';
         successMessage = '';
+
+        const regex = /^[a-zA-Z0-9_]+$/;
+        if (!regex.test(groupName)) {
+            errorMessage = 'Invalid group name. Only alphanumeric characters and underscores are allowed.';
+            return;
+        }
 
         const group_name = { group_name: groupName };
 
         try {
-            const response = await axios.post('/api/v1/creategroup',
+            const response = await axios.post('/api/v1/createGroup',
                 group_name, 
             {
                 withCredentials: true
             });
             
             successMessage = 'Group Created';
-            groups.push({ group_id: response.data.group_id, group_name: groupName });
-            groups = groups;
+            //console.log(response.data);
+            groupNames.push({ label: response.data.data.group_name }); 
+            groupNames = groupNames;
+            groupName = '';
             errorMessage = ''; // Clear any previous error messages
         } catch (error) {
-            errorMessage = 'Failed to create group';
+            if (error.response && error.response.status === 409) {
+                // Catch duplicate entry error
+                errorMessage = 'Group already exists.';
+            } else {
+                // Catch any other errors
+                errorMessage = 'Error creating group.';
+            }
             successMessage = ''; // Clear any previous success messages
         }
     };
+
+    $: newUser.group_name = groupLabels.map(group => group.label.toString());
 </script>
 
 <div class="user-management">
@@ -247,16 +302,16 @@
                 <option value="0">Inactive</option>
             </select>
         </label>
-        <label>
-            Group:
-            <select bind:value={newUser.group_id}>
-                <option value="" disabled>Select Group</option>
-                {#each groups as group}
-                    <!-- Use group_id and group_name from API data -->
-                    <option value={group.group_id}>{group.group_name}</option>
-                {/each}
-            </select>
-        </label>
+        <div class="inline-group">
+            <label for="group-select">Group:</label>
+                <MultiSelect
+                    options={groupNames}
+                    bind:selected={groupLabels}
+                    placeholder="Select Groups"
+                    style="flex: 1; max-width: 300px; margin: 5px;"
+                />
+        </div>
+
         <button type="submit">Create User</button>
     </form>
 
@@ -313,14 +368,14 @@
                         <!-- Editable Group -->
                         <td>
                             {#if editableUser && editableUser.user_name === user.user_name}
-                                <select bind:value={editableUser.group_id}>
-                                    <option value="" disabled selected>Select Group</option>
-                                    {#each groups as group}
-                                        <option value={group.group_id}>{group.group_name}</option>
-                                    {/each}
-                                </select>
+                                <MultiSelect
+                                    options={groupNames}
+                                    bind:selected={editableUser.groups} 
+                                    placeholder="Select Groups"
+                                    style="flex: 1; max-width: 300px; margin: 5px;"
+                                />
                             {:else}
-                                {user.group_name || 'No Group'}
+                                {user.groups || '-'}
                             {/if}
                         </td>
         
@@ -343,6 +398,10 @@
 </div>
 
 <style>
+    .inline-group {
+        display: flex; /* Use flexbox to align items inline */
+        align-items: center; /* Vertically center the items */
+    }
     .user-management {
         padding: 20px;
     }
@@ -362,7 +421,6 @@
     .create-group-button:hover {
         background-color: #0056b3; /* Darken on hover */
     }
-
 
     table {
         width: 100%;

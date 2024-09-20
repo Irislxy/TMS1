@@ -1,5 +1,6 @@
 const express = require("express")
 const router = express.Router()
+const { isAuthenticated } = require("../middlewares/verifyJWT")
 
 // Importing auth controller methods
 const authController = require("../controllers/authController")

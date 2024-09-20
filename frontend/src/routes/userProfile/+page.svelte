@@ -1,8 +1,9 @@
 <script>
   import { onMount } from 'svelte';
   import { axios } from '../../lib/config';
+  import { goto } from '$app/navigation';
 
-  let user = { user_name: '', email: '' };
+  let user = { user_name: '', email: '', active: 1, isAdmin: false };
   let newEmail = '';
   let newPassword = '';
   let errorMessage = '';
@@ -11,17 +12,25 @@
 
   // Fetch current user data
   onMount(async () => {
+    checkStatus();
+  });
+
+  const checkStatus = async () => {
     try {
-      const response = await axios.get('/api/v1/user', {
+      const response = await axios.get('/api/v1/getUserDetails', {
         withCredentials: true
       });
       user.user_name = response.data.user.username;
       user.email = response.data.user.email;
-
+      user.active = response.data.user.active;
+      user.isAdmin = response.data.user.isAdmin;
     } catch (error) {
+      if (error.response.data.errMessage == "User is not found or disabled") {
+        goto('/');
+      }
       errorMessage = 'Failed to fetch user profile';
     }
-  });
+  };
 
   // Update email
   const updateEmail = async (event) => {
@@ -29,7 +38,15 @@
     errorMessage = '';
     successMessage = '';
 
+    // Check user's status before any action
+    await checkStatus();
+
     const updateData = { user_name: user.user_name, email: newEmail };
+
+    if (!newEmail) {
+      errorMessage = 'Empty email field'
+      return;
+    }
 
     try {
       const response = await axios.put('/api/v1/updateEmail',
@@ -37,12 +54,18 @@
       {
         withCredentials: true
       });
+
+      user.email = newEmail; //reassigning email with the new email
       
-      successMessage = 'Profile updated successfully!';
+      successMessage = 'Email updated successfully!';
       errorMessage = ''; // Clear any previous error messages
     } catch (error) {
-      errorMessage = 'Failed to update profile';
-      successMessage = ''; // Clear any previous success messages
+        if (error.response && error.response.status === 400) {
+            errorMessage = 'Email does not meet requirements';
+        } else if (error.response && error.response.status === 500) {
+            errorMessage = 'Failed to update email';
+        }
+        successMessage = ''; // Clear any previous success messages
     }
   };
 
@@ -52,7 +75,21 @@
     errorMessage = '';
     successMessage = '';
 
+    // Check user's status before any action
+    await checkStatus();
+
     const updateData = { user_name: user.user_name, password: newPassword };
+
+    if (!newPassword) {
+        errorMessage = 'Empty password field'
+        return;
+    }
+
+    const regex = new RegExp(/((?=.*\d)(?=.*[a-zA-Z])(?=.*[\W\_]).{8,10})/g)
+    if (!regex.test(newPassword)) {
+      errorMessage = 'Password does not meet requirements'
+      return;
+    }
 
     try {
       const response = await axios.put('/api/v1/updatePassword',
@@ -61,11 +98,13 @@
         withCredentials: true
       });
       
-      successMessage = 'Profile updated successfully!';
+      successMessage = 'Password updated successfully!';
       errorMessage = ''; // Clear any previous error messages
     } catch (error) {
-      errorMessage = 'Failed to update profile';
-      successMessage = ''; // Clear any previous success messages
+        if (error.response && error.response.status === 500) {
+          errorMessage = 'Failed to update password';
+        }
+        successMessage = ''; // Clear any previous success messages
     }
   };
 </script>

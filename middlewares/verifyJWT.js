@@ -3,12 +3,9 @@ const ErrorHandler = require("../utils/errorHandler")
 const pool = require("../config/db_connection")
 
 exports.isAuthenticated = async (req, res, next) => {
-  let token
+  const token = req.cookies.token
   // If token exists
-  if (req.cookies.token) {
-    token = req.cookies.token // Extract token from the cookies
-  } else {
-    // token not found
+  if (!token) {
     return next(new ErrorHandler("Unauthorized", 403))
   }
 
@@ -34,19 +31,50 @@ exports.isAuthenticated = async (req, res, next) => {
     pool.query(query, [username], (err, results) => {
       if (err) {
         console.error("Database query error:", err)
-        return next(new ErrorHandler("Database error", 500)) // Handle database error
+        return next(new ErrorHandler("Database error", 500))
       }
-      // User not found or disabled
+      // Check if user 1.exist and 1.active while accessing other routes
       if (results.length == 0 || !results[0].active) {
-        return next(new ErrorHandler("User is not found or disabled", 404))
+        return next(new ErrorHandler("User is not found or disabled", 401))
       }
     })
   } catch (error) {
-    return next(new ErrorHandler("Invalid Credentials", 401))
+    return next(new ErrorHandler("Unable to retrieve user from database", 401))
   }
 
   req.user = decoded
-  console.log(req.user)
+  //console.log(req.user)
+  //console.log(username)
+
+  // Check if the user is an admin
+  const isAdmin = await checkGroup(username, "admin")
+  req.isAdmin = isAdmin
+  //console.log(req.isAdmin)
 
   next()
+}
+
+const checkGroup = async (username, groupname) => {
+  //console.log(username)
+  //console.log(groupname)
+  try {
+    const [result] = await pool.promise().query(
+      `SELECT *
+      FROM user u
+      JOIN user_group ug ON u.user_name = ug.user_name
+      JOIN group_list g ON ug.group_id = g.group_id
+      WHERE u.user_name = ? AND g.group_name = ?`,
+      [username, groupname]
+    )
+
+    //console.log(result.length)
+
+    if (result.length === 0) {
+      return false
+    }
+
+    return true
+  } catch (error) {
+    return false
+  }
 }

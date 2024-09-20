@@ -5,12 +5,12 @@ const { isAuthenticated } = require("../middlewares/verifyJWT")
 // Importing user controller methods
 const userController = require("../controllers/userController")
 
-router.get("/alluser", isAuthenticated, userController.getAllUser)
-router.get("/alluserwithgrp", userController.getAllUserWithGroup)
-router.get("/user", isAuthenticated, userController.getOneUser)
-router.post("/newuser", isAuthenticated, userController.newUser)
+router.get("/getUserDetails", isAuthenticated, userController.getUserDetails)
+//router.get("/getAllUser", isAuthenticated, userController.getAllUser)
+router.get("/getAllUserWithGroup", isAuthenticated, userController.getAllUserWithGroup)
+router.post("/newUser", isAuthenticated, userController.newUser)
 router.put("/updateEmail", isAuthenticated, userController.updateEmail)
 router.put("/updatePassword", isAuthenticated, userController.updatePassword)
-router.patch("/disableuser", isAuthenticated, userController.disableUser)
+router.patch("/disableUser", isAuthenticated, userController.disableUser)
 
 module.exports = router
