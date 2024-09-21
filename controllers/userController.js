@@ -13,41 +13,30 @@ exports.getUserDetails = async (req, res, next) => {
 
   try {
     const query = "SELECT * FROM user WHERE user_name = ?"
-    pool.execute(query, [username], (err, results) => {
-      if (results.length === 0) {
-        return next(new ErrorHandler("User not found", 404))
-      } else {
-        let user = {
-          username: results[0].user_name,
-          email: results[0].email,
-          active: results[0].active,
-          isAdmin: req.isAdmin
-        }
-        res.status(200).json({
-          user: user
-        })
-      }
+
+    const [results] = await pool.promise().execute(query, [username])
+
+    // Check if user exists
+    if (results.length === 0) {
+      return next(new ErrorHandler("User not found", 404))
+    }
+
+    // Construct user object
+    let user = {
+      username: results[0].user_name,
+      email: results[0].email,
+      active: results[0].active,
+      isAdmin: req.isAdmin
+    }
+
+    // Send response
+    return res.status(200).json({
+      user: user
     })
   } catch (error) {
     return next(new ErrorHandler("Error while getting user", 500))
   }
 }
-
-// // Get all users => /api/v1/getAllUser
-// exports.getAllUser = async (req, res, next) => {
-//   try {
-//     const query = "SELECT * FROM user"
-//     pool.query(query, (err, results) => {
-//       // Return all users
-//       res.status(200).json({
-//         success: true,
-//         data: results
-//       })
-//     })
-//   } catch (error) {
-//     return next(new ErrorHandler("Error while getting all users", 500))
-//   }
-// }
 
 exports.getAllUserWithGroup = async (req, res, next) => {
   let username = req.user.username
@@ -62,11 +51,13 @@ exports.getAllUserWithGroup = async (req, res, next) => {
 
   try {
     const query = `SELECT u.user_name, u.email, u.active, GROUP_CONCAT(g.group_name ORDER BY g.group_name  SEPARATOR ', ') AS 'groups' FROM user u LEFT JOIN user_group ug ON u.user_name = ug.user_name LEFT JOIN group_list g ON ug.group_id = g.group_id GROUP BY u.user_name`
-    pool.query(query, (err, results) => {
-      res.status(200).json({
-        success: true,
-        data: results
-      })
+
+    const [results] = await pool.promise().query(query)
+
+    // Send response with results
+    return res.status(200).json({
+      success: true,
+      data: results
     })
   } catch (error) {
     return next(new ErrorHandler("Error while getting all users", 500))
@@ -105,41 +96,34 @@ exports.newUser = async (req, res, next) => {
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10) // 10 is the salt rounds
 
-    // Insert into user table
-    pool.execute(userQuery, [user_name, hashedPassword, email || null], (err, results) => {
-      if (err) {
-        return next(new ErrorHandler("Error while creating user", 500))
+    // Insert into the user table
+    await pool.promise().execute(userQuery, [user_name, hashedPassword, email || null])
+
+    const groupNames = group_name
+
+    // Iterate through each group name to assign the user to the respective groups
+    for (const group of groupNames) {
+      // Fetch group_id for the current group_name
+      const [groupResults] = await pool.promise().execute(groupIdQuery, [group])
+
+      if (groupResults.length === 0) {
+        return next(new ErrorHandler(`Group '${group}' not found`, 404))
       }
 
-      const newUserName = user_name // Get the newly created username
-      const groupNames = group_name
+      const groupId = groupResults[0].group_id // Get the group_id from the result
 
-      groupNames.forEach((group) => {
-        // Fetch group_id for the current group_name
-        pool.execute(groupIdQuery, [group], (err, groupResults) => {
-          if (err || groupResults.length === 0) {
-            return next(new ErrorHandler(`Group '${group}' not found`, 404))
-          }
+      // Insert into user_group table with the fetched group_id
+      await pool.promise().execute(userGroupQuery, [user_name, groupId])
+    }
 
-          const groupId = groupResults[0].group_id // Get the group_id from the result
-
-          // Insert into user_group table with the fetched group_id
-          pool.execute(userGroupQuery, [user_name, groupId], (err) => {
-            if (err) {
-              return next(new ErrorHandler("Error while assigning user to group", 500))
-            }
-          })
-        })
-      })
-
-      // Successfully created user and assigned to groups
-      return res.status(201).json({
-        success: true,
-        message: "User created successfully and assigned to groups!"
-      })
+    // Successfully created user and assigned to groups
+    return res.status(201).json({
+      success: true,
+      message: "User created successfully and assigned to groups!"
     })
   } catch (error) {
-    console.log(error)
+    console.error("Error while creating user or assigning to groups:", error)
+    return next(new ErrorHandler("Error while creating user or assigning to groups", 500))
   }
 }
 
@@ -157,36 +141,26 @@ exports.disableUser = async (req, res, next) => {
 
   try {
     // Check if the user exists
-    const query = "SELECT * FROM user WHERE user_name = ?"
-    pool.execute(query, [user_name], async (err, results) => {
-      if (err) {
-        return next(new ErrorHandler("Error while retrieving user", 500))
-      }
+    const querySelect = "SELECT * FROM user WHERE user_name = ?"
+    const [results] = await pool.promise().execute(querySelect, [user_name])
 
-      // User does not exist
-      if (results.length === 0) {
-        return next(new ErrorHandler("User not found", 404))
-      }
+    // User does not exist
+    if (results.length === 0) {
+      return next(new ErrorHandler("User not found", 404))
+    }
+
+    // Disable user
+    const queryUpdate = "UPDATE user SET active = ? WHERE user_name = ?"
+    await pool.promise().execute(queryUpdate, [active, user_name])
+
+    // Send success response
+    return res.status(200).json({
+      success: true,
+      message: "User disabled"
     })
   } catch (error) {
-    return next(new ErrorHandler("Unable to retrive user from database", 500))
-  }
-
-  // Disable user
-  try {
-    const query = "UPDATE user SET active = ? WHERE user_name = ?"
-    pool.execute(query, [active, user_name], async (err, results) => {
-      if (err) {
-        return next(new ErrorHandler("Error while disabling user", 500))
-      }
-
-      res.status(200).json({
-        success: true,
-        message: "User disabled"
-      })
-    })
-  } catch (error) {
-    return next(new ErrorHandler("Unable to change user status in database", 500))
+    console.error("Error:", error)
+    return next(new ErrorHandler("Database operation failed", 500))
   }
 }
 
@@ -203,17 +177,16 @@ exports.updateEmail = async (req, res, next) => {
   // Update email
   try {
     const query = "UPDATE user SET email = ? WHERE user_name = ?"
-    pool.execute(query, [email || null, user_name], async (err, results) => {
-      if (err) {
-        return next(new ErrorHandler("Error while updating email", 500))
-      }
 
-      res.status(200).json({
-        success: true,
-        message: "Email updated successfully"
-      })
+    await pool.promise().execute(query, [email || null, user_name])
+
+    // Send success response
+    return res.status(200).json({
+      success: true,
+      message: "Email updated successfully"
     })
   } catch (error) {
+    console.error("Error while updating email:", error)
     return next(new ErrorHandler("Unable to update user", 500))
   }
 }
@@ -232,18 +205,17 @@ exports.updatePassword = async (req, res, next) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    const query = "UPDATE user SET password = ? where user_name = ?"
-    pool.execute(query, [hashedPassword, user_name], async (err, results) => {
-      if (err) {
-        return next(new ErrorHandler("Error while updating password", 500))
-      }
+    // Update the user's password in the database
+    const query = "UPDATE user SET password = ? WHERE user_name = ?"
+    await pool.promise().execute(query, [hashedPassword, user_name])
 
-      res.status(200).json({
-        success: true,
-        message: "Password updated successfully"
-      })
+    // Send success response
+    return res.status(200).json({
+      success: true,
+      message: "Password updated successfully"
     })
   } catch (error) {
+    console.error("Error while updating password:", error)
     return next(new ErrorHandler("Unable to update user", 500))
   }
 }

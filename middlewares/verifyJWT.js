@@ -28,17 +28,14 @@ exports.isAuthenticated = async (req, res, next) => {
 
   try {
     const query = "SELECT user_name, active FROM user WHERE user_name = ?"
-    pool.query(query, [username], (err, results) => {
-      if (err) {
-        console.error("Database query error:", err)
-        return next(new ErrorHandler("Database error", 500))
-      }
-      // Check if user 1.exist and 1.active while accessing other routes
-      if (results.length == 0 || !results[0].active) {
-        return next(new ErrorHandler("User is not found or disabled", 401))
-      }
-    })
+    const [results] = await pool.promise().query(query, [username])
+
+    // Check if the user exists and if the user is active
+    if (results.length === 0 || !results[0].active) {
+      return next(new ErrorHandler("User is not found or disabled", 401))
+    }
   } catch (error) {
+    console.error("Database query error:", err)
     return next(new ErrorHandler("Unable to retrieve user from database", 401))
   }
 

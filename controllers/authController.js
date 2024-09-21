@@ -13,21 +13,19 @@ exports.loginUser = async (req, res, next) => {
     return next(new ErrorHandler("Please enter both user_name and password", 400))
   }
 
-  // Check if user 1.exists and 2.active
-  const query = "SELECT * FROM user WHERE user_name = ?"
-  pool.execute(query, [user_name], async (err, results) => {
-    if (err) {
-      return next(new ErrorHandler("Database error", 500))
-    }
+  try {
+    const query = "SELECT * FROM user WHERE user_name = ?"
+
+    const [results] = await pool.promise().execute(query, [user_name])
 
     // Check if user exists
-    if (results.length == 0) {
+    if (results.length === 0) {
       return next(new ErrorHandler("Invalid user_name or password", 401))
     }
 
     const user = results[0] // Take the first result
 
-    // Check if user active
+    // Check if user is active
     if (user.active == 0) {
       return next(new ErrorHandler("Invalid user_name or password", 401))
     }
@@ -58,7 +56,7 @@ exports.loginUser = async (req, res, next) => {
     }
 
     // Set cookie and send response
-    res
+    return res
       .status(200)
       .cookie("token", token, options)
       .json({
@@ -67,7 +65,10 @@ exports.loginUser = async (req, res, next) => {
         token: token, // Send the token to the client
         data: { username: user.user_name } // Return user info
       })
-  })
+  } catch (err) {
+    console.error("Database query error:", err)
+    return next(new ErrorHandler("Database error", 500))
+  }
 }
 
 exports.logout = async (req, res, next) => {

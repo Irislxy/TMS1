@@ -22,23 +22,24 @@ exports.createGroup = async (req, res, next) => {
   try {
     const query = "INSERT INTO group_list (group_name) VALUES (?)"
 
-    pool.execute(query, [group_name], (err, results) => {
-      if (err) {
-        if (err.code === "ER_DUP_ENTRY") {
-          // Catch duplicate entry error
-          return res.status(409).json({
-            success: false,
-            message: "Group already exists"
-          })
-        }
-      }
-      res.status(201).json({
-        success: true,
-        message: "Group Created.",
-        data: { group_name: group_name }
-      })
+    await pool.promise().execute(query, [group_name])
+
+    // Send success response
+    return res.status(201).json({
+      success: true,
+      message: "Group created.",
+      data: { group_name: group_name }
     })
-  } catch (error) {
+  } catch (err) {
+    // Handle duplicate entry error
+    if (err.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({
+        success: false,
+        message: "Group already exists"
+      })
+    }
+
+    console.error("Error while creating group:", err)
     return next(new ErrorHandler("Error while creating group", 500))
   }
 }
@@ -53,17 +54,19 @@ exports.getAllGroup = async (req, res, next) => {
       message: "Do not have permission to access this resource"
     })
   }
-  const query = "SELECT group_name FROM group_list"
 
   try {
-    pool.query(query, (err, results) => {
-      // Return all group
-      res.status(200).json({
-        success: true,
-        data: results
-      })
+    const query = "SELECT group_name FROM group_list"
+
+    const [results] = await pool.promise().query(query)
+
+    // Return all groups
+    return res.status(200).json({
+      success: true,
+      data: results
     })
   } catch (error) {
+    console.error("Error while getting group:", error)
     return next(new ErrorHandler("Error while getting group", 500))
   }
 }
@@ -94,12 +97,12 @@ exports.updateGroup = async (req, res, next) => {
 
     if (groupsToDelete.length > 0) {
       const idsToDelete = groupsToDelete.join(", ")
-      await pool.execute(`DELETE FROM user_group WHERE user_name = ? AND group_id IN (${idsToDelete})`, [user_name])
+      await pool.promise().execute(`DELETE FROM user_group WHERE user_name = ? AND group_id IN (${idsToDelete})`, [user_name])
     }
 
     if (groupsToAdd.length > 0) {
       const values = groupsToAdd.map((id) => `(${id}, '${user_name}')`).join(", ")
-      await pool.execute(`INSERT INTO user_group (group_id, user_name) VALUES ${values}`)
+      await pool.promise().execute(`INSERT INTO user_group (group_id, user_name) VALUES ${values}`)
     }
 
     res.status(201).json({ message: `User '${user_name}' has been assigned group(s) successfully.`, success: true })
