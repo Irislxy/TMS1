@@ -16,7 +16,7 @@ exports.loginUser = async (req, res, next) => {
   try {
     const query = "SELECT * FROM user WHERE user_name = ?"
 
-    const [results] = await pool.promise().execute(query, [user_name])
+    const [results] = await pool.execute(query, [user_name])
 
     // Check if user exists
     if (results.length === 0) {

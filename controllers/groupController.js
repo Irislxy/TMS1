@@ -22,7 +22,7 @@ exports.createGroup = async (req, res, next) => {
   try {
     const query = "INSERT INTO group_list (group_name) VALUES (?)"
 
-    await pool.promise().execute(query, [group_name])
+    await pool.execute(query, [group_name])
 
     // Send success response
     return res.status(201).json({
@@ -58,7 +58,7 @@ exports.getAllGroup = async (req, res, next) => {
   try {
     const query = "SELECT group_name FROM group_list"
 
-    const [results] = await pool.promise().query(query)
+    const [results] = await pool.query(query)
 
     // Return all groups
     return res.status(200).json({
@@ -84,10 +84,10 @@ exports.updateGroup = async (req, res, next) => {
   const { user_name, group_name } = req.body
 
   try {
-    const [currentGroups] = await pool.promise().query("SELECT group_id FROM user_group WHERE user_name = ?", [user_name])
+    const [currentGroups] = await pool.query("SELECT group_id FROM user_group WHERE user_name = ?", [user_name])
     const currentGroupIds = new Set(currentGroups.map((group) => group.group_id)) //map each group_name to group_id in user_group
 
-    const [allGroups] = await pool.promise().query("SELECT group_id, group_name FROM group_list")
+    const [allGroups] = await pool.query("SELECT group_id, group_name FROM group_list")
     const groupMap = new Map(allGroups.map((group) => [group.group_name, group.group_id])) //map each group_name to group_id in group_list
 
     const newGroupIds = new Set(group_name.map((name) => groupMap.get(name))) //convert group_name to group_id
@@ -97,12 +97,12 @@ exports.updateGroup = async (req, res, next) => {
 
     if (groupsToDelete.length > 0) {
       const idsToDelete = groupsToDelete.join(", ")
-      await pool.promise().execute(`DELETE FROM user_group WHERE user_name = ? AND group_id IN (${idsToDelete})`, [user_name])
+      await pool.execute(`DELETE FROM user_group WHERE user_name = ? AND group_id IN (${idsToDelete})`, [user_name])
     }
 
     if (groupsToAdd.length > 0) {
       const values = groupsToAdd.map((id) => `(${id}, '${user_name}')`).join(", ")
-      await pool.promise().execute(`INSERT INTO user_group (group_id, user_name) VALUES ${values}`)
+      await pool.execute(`INSERT INTO user_group (group_id, user_name) VALUES ${values}`)
     }
 
     res.status(201).json({ message: `User '${user_name}' has been assigned group(s) successfully.`, success: true })
@@ -113,7 +113,7 @@ exports.updateGroup = async (req, res, next) => {
 
 const checkGroup = async (username, groupname) => {
   try {
-    const [result] = await pool.promise().query(
+    const [result] = await pool.query(
       `SELECT *
       FROM user u
       JOIN user_group ug ON u.user_name = ug.user_name

@@ -14,7 +14,7 @@ exports.getUserDetails = async (req, res, next) => {
   try {
     const query = "SELECT * FROM user WHERE user_name = ?"
 
-    const [results] = await pool.promise().execute(query, [username])
+    const [results] = await pool.execute(query, [username])
 
     // Check if user exists
     if (results.length === 0) {
@@ -52,7 +52,7 @@ exports.getAllUserWithGroup = async (req, res, next) => {
   try {
     const query = `SELECT u.user_name, u.email, u.active, GROUP_CONCAT(g.group_name ORDER BY g.group_name  SEPARATOR ', ') AS 'groups' FROM user u LEFT JOIN user_group ug ON u.user_name = ug.user_name LEFT JOIN group_list g ON ug.group_id = g.group_id GROUP BY u.user_name`
 
-    const [results] = await pool.promise().query(query)
+    const [results] = await pool.query(query)
 
     // Send response with results
     return res.status(200).json({
@@ -97,14 +97,14 @@ exports.newUser = async (req, res, next) => {
     const hashedPassword = await bcrypt.hash(password, 10) // 10 is the salt rounds
 
     // Insert into the user table
-    await pool.promise().execute(userQuery, [user_name, hashedPassword, email || null])
+    await pool.execute(userQuery, [user_name, hashedPassword, email || null])
 
     const groupNames = group_name
 
     // Iterate through each group name to assign the user to the respective groups
     for (const group of groupNames) {
       // Fetch group_id for the current group_name
-      const [groupResults] = await pool.promise().execute(groupIdQuery, [group])
+      const [groupResults] = await pool.execute(groupIdQuery, [group])
 
       if (groupResults.length === 0) {
         return next(new ErrorHandler(`Group '${group}' not found`, 404))
@@ -113,7 +113,7 @@ exports.newUser = async (req, res, next) => {
       const groupId = groupResults[0].group_id // Get the group_id from the result
 
       // Insert into user_group table with the fetched group_id
-      await pool.promise().execute(userGroupQuery, [user_name, groupId])
+      await pool.execute(userGroupQuery, [user_name, groupId])
     }
 
     // Successfully created user and assigned to groups
@@ -142,7 +142,7 @@ exports.disableUser = async (req, res, next) => {
   try {
     // Check if the user exists
     const querySelect = "SELECT * FROM user WHERE user_name = ?"
-    const [results] = await pool.promise().execute(querySelect, [user_name])
+    const [results] = await pool.execute(querySelect, [user_name])
 
     // User does not exist
     if (results.length === 0) {
@@ -151,7 +151,7 @@ exports.disableUser = async (req, res, next) => {
 
     // Disable user
     const queryUpdate = "UPDATE user SET active = ? WHERE user_name = ?"
-    await pool.promise().execute(queryUpdate, [active, user_name])
+    await pool.execute(queryUpdate, [active, user_name])
 
     // Send success response
     return res.status(200).json({
@@ -178,7 +178,7 @@ exports.updateEmail = async (req, res, next) => {
   try {
     const query = "UPDATE user SET email = ? WHERE user_name = ?"
 
-    await pool.promise().execute(query, [email || null, user_name])
+    await pool.execute(query, [email || null, user_name])
 
     // Send success response
     return res.status(200).json({
@@ -207,7 +207,7 @@ exports.updatePassword = async (req, res, next) => {
 
     // Update the user's password in the database
     const query = "UPDATE user SET password = ? WHERE user_name = ?"
-    await pool.promise().execute(query, [hashedPassword, user_name])
+    await pool.execute(query, [hashedPassword, user_name])
 
     // Send success response
     return res.status(200).json({
@@ -222,7 +222,7 @@ exports.updatePassword = async (req, res, next) => {
 
 const checkGroup = async (username, groupname) => {
   try {
-    const [result] = await pool.promise().query(
+    const [result] = await pool.query(
       `SELECT *
       FROM user u
       JOIN user_group ug ON u.user_name = ug.user_name

@@ -28,7 +28,7 @@ exports.isAuthenticated = async (req, res, next) => {
 
   try {
     const query = "SELECT user_name, active FROM user WHERE user_name = ?"
-    const [results] = await pool.promise().query(query, [username])
+    const [results] = await pool.query(query, [username])
 
     // Check if the user exists and if the user is active
     if (results.length === 0 || !results[0].active) {
@@ -55,7 +55,7 @@ const checkGroup = async (username, groupname) => {
   //console.log(username)
   //console.log(groupname)
   try {
-    const [result] = await pool.promise().query(
+    const [result] = await pool.query(
       `SELECT *
       FROM user u
       JOIN user_group ug ON u.user_name = ug.user_name
