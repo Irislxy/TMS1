@@ -28,11 +28,15 @@ app.use(express.urlencoded({ extended: true })) // to parse form data
 
 // Importing all routes
 const appListRoutes = require("./routes/appList")
+const planRoutes = require("./routes/plan")
+const taskRoutes = require("./routes/task")
 const loginRoutes = require("./routes/auth")
 const userRoutes = require("./routes/user")
 const groupRoutes = require("./routes/group")
 
 app.use("/api/v1", appListRoutes)
+app.use("/api/v1", planRoutes)
+app.use("/api/v1", taskRoutes)
 app.use("/api/v1", loginRoutes)
 app.use("/api/v1", userRoutes)
 app.use("/api/v1", groupRoutes)

@@ -88,7 +88,7 @@
         originalData = { ...user }; // Save original data in case of cancel
         editableUser = { ...user }; // Save edited data
         editableUser.groups = editableUser.groups ? editableUser.groups.split(', ') : [];
-        console.log('Editing User:', editableUser); 
+        //console.log('Editing User:', editableUser); 
     };
 
     // Function to handle cancel button
@@ -101,7 +101,7 @@
     const handleSave = async (event) => {
         await checkStatus();
         console.log("editableUser:", editableUser);
-        //console.log("originalData:", originalData); 
+        console.log("originalData:", originalData); 
 
         // Disable the user if the active status is set to inactive (0)
         if (editableUser.active == 0 && originalData.active == 1) {
@@ -168,7 +168,7 @@
                 }, { withCredentials: true });
 
                 if (response.status === 201) {
-                    successMessage = 'Group updated successfully!';
+                    successMessage = 'Updated successfully!';
                 }
             } catch (error) {
                 errorMessage = 'Error updating group';
