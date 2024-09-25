@@ -305,7 +305,7 @@
     </button>
 
     <Modal bind:showModal>
-        <h2>
+        <h2 slot="header">
             Create Group
         </h2>
 

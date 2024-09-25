@@ -25,10 +25,12 @@
 
 <style>
 	dialog {
-		max-width: 32em;
+		width: 65%;
+		max-width: 800px;
 		border-radius: 0.2em;
 		border: none;
-		padding: 0;
+		padding: 20px;
+		/* overflow: hidden; */
 	}
 	dialog::backdrop {
 		background: rgba(0, 0, 0, 0.3);

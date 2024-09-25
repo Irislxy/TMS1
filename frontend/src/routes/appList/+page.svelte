@@ -120,7 +120,7 @@
 	</button>
 
 	<Modal bind:showModal>
-		<h3>
+		<h3 slot="header">
 			Create App
 		</h3>
 
