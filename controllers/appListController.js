@@ -29,7 +29,7 @@ exports.getAppDetails = async (req, res, next) => {
 
   try {
     const query = "SELECT * FROM application WHERE app_acronym = ?"
-    // where should the app_acronym come from?
+
     const [results] = await pool.query(query, [app_acronym])
 
     return res.status(200).json({
@@ -54,7 +54,7 @@ exports.createApp = async (req, res, next) => {
 
   try {
     const query = "INSERT INTO application (app_acronym, app_description, app_rnumber, app_startdate, app_enddate, app_permit_create, app_permit_open, app_permit_todolist, app_permit_doing, app_permit_done) VALUES (?,?,?,?,?,?,?,?,?,?)"
-    // where should the app_acronym come from? (frontend)
+
     await pool.execute(query, [app_acronym, app_description || null, app_rnumber, app_startdate, app_enddate, app_permit_create || null, app_permit_open || null, app_permit_todolist || null, app_permit_doing || null, app_permit_done || null])
 
     return res.status(201).json({
@@ -74,6 +74,13 @@ exports.createApp = async (req, res, next) => {
       }
     })
   } catch (error) {
+    // Handle duplicate entry error
+    if (error.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({
+        success: false,
+        message: "App already exists"
+      })
+    }
     console.error("Error while creating the app:", error)
     return next(new ErrorHandler("Error while creating the app", 500))
   }
@@ -91,7 +98,7 @@ exports.updateApp = async (req, res, next) => {
 
   try {
     const query = "UPDATE application SET app_description = ?, app_rnumber = ?, app_startdate = ?, app_enddate = ?, app_permit_create = ?, app_permit_open = ?, app_permit_todolist = ?, app_permit_doing = ?,app_permit_done = ? WHERE app_acronym = ?"
-    // where should the app_acronym come from? (frontend)
+
     await pool.execute(query, [app_acronym, app_description || null, app_rnumber, app_startdate, app_enddate, app_permit_create || null, app_permit_open || null, app_permit_todolist || null, app_permit_doing || null, app_permit_done || null])
 
     return res.status(200).json({

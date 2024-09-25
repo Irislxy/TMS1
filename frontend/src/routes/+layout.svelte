@@ -1,7 +1,6 @@
 <script>
   import Navbar from '$lib/components/Navbar.svelte';
   import { page } from '$app/stores';
-
   let pageTitle = '';
   let user = { user_name: '', email: '' };
 
@@ -13,6 +12,8 @@
         pageTitle = 'User Management';
     } else if ($page.url.pathname === '/userProfile') {
       pageTitle = 'User Profile';
+    } else if ($page.url.pathname === '/task') {
+      pageTitle = 'Kanban';
     } else {
         pageTitle = 'App List';
     }

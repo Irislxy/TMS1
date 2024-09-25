@@ -21,18 +21,17 @@ exports.getAllTask = async (req, res, next) => {
 }
 
 exports.getTaskDetails = async (req, res, next) => {
-  //not tested
-  const { task_app_acronym } = req.body
+  const { task_id } = req.body
 
-  // Check if task_app_acronym is defined
-  if (!task_app_acronym) {
-    return next(new ErrorHandler("Task App acronym not defined", 400))
+  // Check if task_id is defined
+  if (!task_id) {
+    return next(new ErrorHandler("Task ID not defined", 400))
   }
 
   try {
-    const query = "SELECT * FROM task WHERE task_app_acronym = ?"
+    const query = "SELECT * FROM task WHERE task_id = ?"
 
-    const [results] = await pool.query(query, [task_app_acronym])
+    const [results] = await pool.query(query, [task_id])
 
     return res.status(200).json({
       success: true,
