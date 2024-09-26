@@ -99,7 +99,7 @@ exports.updateApp = async (req, res, next) => {
   try {
     const query = "UPDATE application SET app_description = ?, app_rnumber = ?, app_startdate = ?, app_enddate = ?, app_permit_create = ?, app_permit_open = ?, app_permit_todolist = ?, app_permit_doing = ?,app_permit_done = ? WHERE app_acronym = ?"
 
-    await pool.execute(query, [app_acronym, app_description || null, app_rnumber, app_startdate, app_enddate, app_permit_create || null, app_permit_open || null, app_permit_todolist || null, app_permit_doing || null, app_permit_done || null])
+    await pool.execute(query, [app_description || null, app_rnumber, app_startdate, app_enddate, app_permit_create || null, app_permit_open || null, app_permit_todolist || null, app_permit_doing || null, app_permit_done || null, app_acronym])
 
     return res.status(200).json({
       success: true,

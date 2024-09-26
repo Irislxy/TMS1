@@ -90,7 +90,7 @@ exports.updatePlan = async (req, res, next) => {
   try {
     const query = "UPDATE plan SET plan_mvp_name = ?, plan_startdate = ?, plan_enddate = ?, plan_colour = ? WHERE plan_app_acronym = ?"
 
-    await pool.execute(query, [plan_mvp_name, plan_startdate, plan_enddate, plan_app_acronym, plan_colour])
+    await pool.execute(query, [plan_mvp_name, plan_startdate, plan_enddate, plan_colour, plan_app_acronym])
 
     // Send success response
     return res.status(200).json({
