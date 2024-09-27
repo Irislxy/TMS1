@@ -244,7 +244,9 @@
 			</div>
 		</div>
 
-		<button class="button" {handleCreateApp}>Create App</button>
+		<div class="modal-footer">
+			<button class="button" {handleCreateApp}>Create App</button>
+		</div>
 	</Modal>
 
 	<div class="app-list">
@@ -356,7 +358,9 @@
 		</div>
 	</div>
 
-	<button class="button" {handleEditApp}>Edit App</button>
+	<div class="modal-footer">
+		<button class="button" {handleEditApp}>Edit App</button>
+	</div>
 </AppModal>
 
 <style>
@@ -486,8 +490,9 @@
     flex-direction: column;
   }
 
-	.button {
-		display: flex;
+  .modal-footer {
+    display: flex;
     justify-content: flex-end;
+		padding-right: 10px;
   }
 </style>

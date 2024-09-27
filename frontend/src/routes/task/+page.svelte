@@ -1,16 +1,19 @@
 <script>
   import { onMount } from 'svelte';
   import { axios } from '$lib/config';
+  import { goto } from '$app/navigation';
   import Modal from '$lib/components/Modal.svelte';
   import TaskModal from '$lib/components/TaskModal.svelte';
+  import PlanModal from '$lib/components/PlanModal.svelte';
   
   let showModal = false; // modal for task details
   let showTaskModal = false; // modal for create task
+  let showPlanModal = false; // modal for create plan
   let taskDetails = [];
   let planNames = [];
   let originalPlan = '';
   let newNotes = '';
-  //let newPlan = { plan_app_acronym: '', plan_mvp_name: '', plan_startdate: '', plan_enddate: '', plan_colour: ''}
+  let newPlan = { plan_app_acronym: '', plan_mvp_name: '', plan_startdate: '', plan_enddate: '', plan_colour: ''}
   let newTask = { task_id: '', task_name: '', task_description: '', task_notes: '', task_plan: '', task_app_acronym: '', task_state: '', task_creator: '', task_owner: '', task_createdate: ''}
   let errorMessage = '';
 	let successMessage = '';
@@ -31,9 +34,7 @@
   // fetch all task
   const fetchAllTask = async () => {
     try {
-      const response = await axios.get('/api/v1/getAllTask', {
-        withCredentials: true
-      });
+      const response = await axios.get('/api/v1/getAllTask', { withCredentials: true });
       
       const fetchedTasks = response.data.data;
       
@@ -68,9 +69,7 @@
   // fetch all plan for dropdown
   const fetchPlanNames = async () => {
     try {
-      const response = await axios.get('/api/v1/getAllPlan', {
-          withCredentials: true
-      });
+      const response = await axios.get('/api/v1/getAllPlan', { withCredentials: true });
       if (response.status === 200) {
         planNames = response.data.data;
         //console.log(planNames);
@@ -146,34 +145,42 @@
 
   const handleCreateTask = async () => {
     showTaskModal = True;
-    // insertion logic
+    
+    try {
+      await axios.post('/api/v1/createTask', newTask, { withCredentials: true });
+
+      errorMessage = '';
+      successMessage = 'Task Created';
+      showPlanModal = true;
+    } catch (error) {
+      console.error(error);
+      errorMessage = 'Failed to create task';
+    }
   };
 
-  const createPlan = () => {
-    console.log("create plan triggered");
+  // Function to create plan
+  const handleCreatePlan = async () => {
+    // Check if all required fields are provided
+		if (!newPlan.plan_app_acronym || !newPlan.plan_mvp_name || !newPlan.plan_startdate || !newPlan.plan_enddate || !newPlan.plan_colour) {
+			errorMessage = 'All fields are required';
+			return;
+  	}
+
+    try {
+      await axios.post('/api/v1/createPlan', newPlan, { withCredentials: true });
+
+      errorMessage = '';
+      successMessage = 'Plan Created';
+      showPlanModal = true;
+    } catch (error) {
+      console.error(error);
+      errorMessage = 'Failed to create plan';
+    }
   };
 
-    // // Function to create plan
-  // const handleCreatePlan = async () => {
-  //   // Check if all required fields are provided
-	// 	if (!newPlan.plan_app_acronym || !newPlan.plan_mvp_name || !newPlan.plan_startdate || !newPlan.plan_enddate || !newPlan.plan_colour) {
-	// 		errorMessage = 'All fields are required';
-	// 		return;
-  // 	}
-
-  //   try {
-  //     const response = await axios.post('/api/v1/createPlan', newPlan, 
-  //     { 
-  //       withCredentials: true 
-  //     });
-
-  //     errorMessage = '';
-  //     successMessage = 'Plan Created';
-  //     showModal = true;
-  //   } catch (error) {
-  //     console.error(error);
-  //   }
-  // };
+  const openPlan = async () => {
+    goto('/appList');
+  }
 </script>
 
 <div class="header-buttons">
@@ -183,9 +190,9 @@
     <button class="plan-button">Plan</button>
     <div class="dropdown-content">
       {#each planNames as plan}
-        <button value={plan.plan_mvp_name}>{plan.plan_mvp_name}</button>
+        <button on:click={() => openPlan(plan.plan_mvp_name)}>{plan.plan_mvp_name}</button>
       {/each}
-      <button on:click={createPlan}>Create New Plan</button>
+      <button on:click={() => (showPlanModal = true)}>Create New Plan</button>
     </div>
   </div>
 </div>
@@ -363,6 +370,52 @@
   </div>
 </TaskModal>
 
+<PlanModal bind:showPlanModal>
+  <h2 slot="header">
+		Create Plan
+	</h2>
+
+  {#if errorMessage}
+    <p style="color: red;">{errorMessage}</p>
+  {/if}
+
+  {#if successMessage}
+  <p style="color: green;">{successMessage}</p>
+  {/if}
+
+  <div class="form-group">
+    <label for="plan_name">Name: </label>
+    <input type="text" id="plan_name" bind:value={newPlan.plan_mvp_name} required />
+  </div>
+
+  <div class="date-group">
+    <!-- App Start Date Field -->
+    <div class="form-group">
+      <label for="plan_startdate">Start Date: </label>
+      <input type="date" id="plan_startdate" bind:value={newPlan.plan_startdate} required />
+    </div>
+
+    <!-- App End Date Field -->
+    <div class="form-group" style="margin-left: 20px;">
+      <label for="plan_enddate">End Date: </label>
+      <input type="date" id="plan_enddate" bind:value={newPlan.plan_enddate} required />
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="plan_colour">Colour: </label>
+    <select bind:value={newPlan.plan_colour} style="width: 82.7%;">
+      <option value="red">Red</option>
+      <option value="green">Green</option>
+      <option value="orange">Orange</option>
+    </select>
+  </div>
+
+  <div class="modal-footer">
+    <button class="button" on:click={handleCreatePlan}>Create Plan</button>
+  </div>
+</PlanModal>
+
 <style>
   .header-buttons {
     padding-top: 20px;
@@ -534,4 +587,9 @@
   .button {
     margin-right: 10px;
   }
+
+  .date-group {
+		display: flex;
+		gap: 20px;
+	}
 </style>

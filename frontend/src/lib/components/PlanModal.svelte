@@ -1,15 +1,15 @@
 <script>
-	export let showAppModal; // boolean
+	export let showPlanModal; // boolean
 
 	let dialog; // HTMLDialogElement
 
-	$: if (dialog && showAppModal) dialog.showModal();
+	$: if (dialog && showPlanModal) dialog.showModal();
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
 <dialog
 	bind:this={dialog}
-	on:close={() => (showAppModal = false)}
+	on:close={() => (showPlanModal = false)}
 	on:click|self={() => dialog.close()}
 >
 	<!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -26,8 +26,8 @@
 <style>
 	dialog {
 		width: 65%;
-		max-width: 800px;
-		max-height: 500px;
+		max-width: 500px;
+    max-height: 500px;
 		border-radius: 0.2em;
 		border: none;
 		padding: 20px;
