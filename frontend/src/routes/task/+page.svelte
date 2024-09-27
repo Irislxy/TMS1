@@ -2,11 +2,16 @@
   import { onMount } from 'svelte';
   import { axios } from '$lib/config';
   import Modal from '$lib/components/Modal.svelte';
+  import TaskModal from '$lib/components/TaskModal.svelte';
   
-  let showModal = false;
+  let showModal = false; // modal for task details
+  let showTaskModal = false; // modal for create task
   let taskDetails = [];
-  let newPlan = { plan_app_acronym: '', plan_mvp_name: '', plan_startdate: '', plan_enddate: '', plan_colour: ''}
-  let changePlan = { task_id: '', task_plan: '' };
+  let planNames = [];
+  let originalPlan = '';
+  let newNotes = '';
+  //let newPlan = { plan_app_acronym: '', plan_mvp_name: '', plan_startdate: '', plan_enddate: '', plan_colour: ''}
+  let newTask = { task_id: '', task_name: '', task_description: '', task_notes: '', task_plan: '', task_app_acronym: '', task_state: '', task_creator: '', task_owner: '', task_createdate: ''}
   let errorMessage = '';
 	let successMessage = '';
   let tasks = {
@@ -20,9 +25,10 @@
   // Fetch task details when component mounts
   onMount(async () => {
     await fetchAllTask();
+    await fetchPlanNames();
   });
 
-  // Function to fetch all task
+  // fetch all task
   const fetchAllTask = async () => {
     try {
       const response = await axios.get('/api/v1/getAllTask', {
@@ -41,60 +47,148 @@
       };
       //console.log('Open Tasks:', tasks.open);
     } catch (error) {
-      console.error("Error fetching tasks:", error);
+      console.error(error);
+      errorMessage = 'Failed to fetch all tasks';
     }
   };
 
-  // Function to fetch specific task details with taskId provided
+  // fetch specific task details with taskId provided
   const fetchTaskDetails = async (taskId) => {
     try {
       const response = await axios.post('/api/v1/getTaskDetails', { task_id: taskId }, { withCredentials: true });
       taskDetails = response.data.data[0]; // Get the first task in the array
+      originalPlan = taskDetails.task_plan;
       showModal = true;
     } catch (error) {
       console.error(error);
+      errorMessage = 'Failed to fetch task details';
     }
   };
 
-  // Function to create plan
-  const handleCreatePlan = async () => {
-    // Check if all required fields are provided
-		if (!newPlan.plan_app_acronym || !newPlan.plan_mvp_name || !newPlan.plan_startdate || !newPlan.plan_enddate || !newPlan.plan_colour) {
-			errorMessage = 'All fields are required';
-			return;
-  	}
-
+  // fetch all plan for dropdown
+  const fetchPlanNames = async () => {
     try {
-      const response = await axios.post('/api/v1/createPlan', newPlan, 
-      { 
-        withCredentials: true 
+      const response = await axios.get('/api/v1/getAllPlan', {
+          withCredentials: true
       });
+      if (response.status === 200) {
+        planNames = response.data.data;
+        //console.log(planNames);
+      } else {
+          errorMessage = 'Failed to load plans.';
+      }
+    } catch (error) {
+      errorMessage = 'Error fetching data';
+    }
+  }
 
-      errorMessage = '';
-      successMessage = 'Plan Created';
-      showModal = true;
+  // Function to update plan dropdown within task with taskId provided
+  const updatePlan = async (taskId, updatedPlan) => {
+    const updateData = { task_id: taskId, task_plan: updatedPlan };
+    try {
+      await axios.put('/api/v1/updateTaskPlan', updateData, { withCredentials: true });
+
+      successMessage = 'Task Plan Updated';
     } catch (error) {
       console.error(error);
+      errorMessage = 'Failed to update task plan';
     }
   };
 
-  const saveChanges = () => {
-    console.log("Save changes triggered");
+  // Function to update task notes within task with taskId provided
+  const updateNotes = async (taskId) => {
+    const updateData = { task_id: taskId, task_notes: newNotes };
+    try {
+      await axios.put('/api/v1/updateNotes', updateData, { withCredentials: true });
+
+      successMessage = 'Task Notes Updated';
+    } catch (error) {
+      console.error(error);
+      errorMessage = 'Failed to update task notes';
+    }
   };
 
-  const demoteTask = () => {
-    console.log("Demote task triggered");
+  const handleSave = async () => {
+    // handle changed plan
+    if (taskDetails.task_id && taskDetails.task_plan !== originalPlan) {
+      await updatePlan(taskDetails.task_id, taskDetails.task_plan);
+    } else {
+      errorMessage = 'No changes were made';
+    }
+
+    await updateNotes(taskDetails.task_id);
   };
 
-  const promoteTask = () => {
-    console.log("Promote task triggered");
+  // todo: task state
+  const handleDemote = async () => {
+    // handle changed plan
+    if (taskDetails.task_id && taskDetails.task_plan !== originalPlan) {
+      await updatePlan(taskDetails.task_id, taskDetails.task_plan);
+    } else {
+      errorMessage = 'No changes were made';
+    }
+
+    await updateNotes(taskDetails.task_id);
   };
+
+  // todo: task state
+  const handlePromote = async () => {
+    // handle changed plan
+    if (taskDetails.task_id && taskDetails.task_plan !== originalPlan) {
+      await updatePlan(taskDetails.task_id, taskDetails.task_plan);
+    } else {
+      errorMessage = 'No changes were made';
+    }
+
+    await updateNotes(taskDetails.task_id);
+  };
+
+
+  const handleCreateTask = async () => {
+    showTaskModal = True;
+    // insertion logic
+  };
+
+  const createPlan = () => {
+    console.log("create plan triggered");
+  };
+
+    // // Function to create plan
+  // const handleCreatePlan = async () => {
+  //   // Check if all required fields are provided
+	// 	if (!newPlan.plan_app_acronym || !newPlan.plan_mvp_name || !newPlan.plan_startdate || !newPlan.plan_enddate || !newPlan.plan_colour) {
+	// 		errorMessage = 'All fields are required';
+	// 		return;
+  // 	}
+
+  //   try {
+  //     const response = await axios.post('/api/v1/createPlan', newPlan, 
+  //     { 
+  //       withCredentials: true 
+  //     });
+
+  //     errorMessage = '';
+  //     successMessage = 'Plan Created';
+  //     showModal = true;
+  //   } catch (error) {
+  //     console.error(error);
+  //   }
+  // };
 </script>
 
-<!-- Create Task Button -->
-<!-- <button class="create-task-button" on:click={() => (showModal = true)}>
-  Create Task
-</button> -->
+<div class="header-buttons">
+  <button class="create-task-button" on:click={() => (showTaskModal = true)}>Create Task</button>
+
+  <div class="dropdown">
+    <button class="plan-button">Plan</button>
+    <div class="dropdown-content">
+      {#each planNames as plan}
+        <button value={plan.plan_mvp_name}>{plan.plan_mvp_name}</button>
+      {/each}
+      <button on:click={createPlan}>Create New Plan</button>
+    </div>
+  </div>
+</div>
 
 <div class="kanban-board">
   <!-- Open Column -->
@@ -177,39 +271,170 @@
   <h2 slot="header">
 		Task Details
 	</h2>
+
+  {#if errorMessage}
+    <p style="color: red;">{errorMessage}</p>
+  {/if}
+
+  {#if successMessage}
+  <p style="color: green;">{successMessage}</p>
+  {/if}
+
   <div class="modal-content">
     <!-- Left Section -->
     <div class="modal-left">
-      <p>ID: {taskDetails.task_id}</p>
-      <p>Name: {taskDetails.task_name}</p>
-      <p>Description: {taskDetails.task_description}</p>
-      <p>State: {taskDetails.task_state}</p>
-      <p>Plan: {taskDetails.task_plan}</p>
-      <p>Creator: {taskDetails.task_creator}</p>
-      <p>Owner: {taskDetails.task_owner}</p>
-      <p>Created date: {taskDetails.task_createdate}</p>
+      <p><strong>ID:</strong> {taskDetails.task_id}</p>
+      <p><strong>Name:</strong> {taskDetails.task_name}</p>
+      <p><strong>Description:</strong> {taskDetails.task_description}</p>
+      <p><strong>State:</strong> {taskDetails.task_state}</p>
+      <label for="new-plan"><strong>Plan:</strong> </label>
+      <select bind:value={taskDetails.task_plan} style="width: 60%;">
+        {#each planNames as plan}
+          <option value={plan.plan_mvp_name}>{plan.plan_mvp_name}</option>
+        {/each}
+      </select>
+      <p><strong>Creator:</strong> {taskDetails.task_creator}</p>
+      <p><strong>Owner:</strong> {taskDetails.task_owner}</p>
+      <p><strong>Created date:</strong> {taskDetails.task_createdate}</p>
     </div>
 
     <!-- Right Section -->
     <div class="modal-right">
       <div class="notes-area">
-        <label for="notes">Notes:</label>
+        <label for="notes"><strong>Notes:</strong></label>
         <textarea id="notes" disabled>{taskDetails.task_notes}</textarea>
       </div>
       <div class="notes-area">
-        <textarea id="userNotes" bind:value={taskDetails.task_notes} placeholder="Enter notes here..."></textarea>
+        <textarea id="userNotes" bind:value={newNotes} placeholder="Enter notes here..."></textarea>
       </div>
     </div>
   </div>
 
   <div class="modal-footer">
-    <button class="button" on:click={saveChanges}>Save</button>
-    <button class="button" on:click={demoteTask}>Demote</button>
-    <button class="button" on:click={promoteTask}>Promote</button>
+    <button class="button" on:click={handleSave}>Save</button>
+    <button class="button" on:click={handleDemote}>Demote</button>
+    <button class="button" on:click={handlePromote}>Promote</button>
   </div>
 </Modal>
 
+<TaskModal bind:showTaskModal>
+  <h2 slot="header">
+		Create Task
+	</h2>
+
+  {#if errorMessage}
+    <p style="color: red;">{errorMessage}</p>
+  {/if}
+
+  {#if successMessage}
+  <p style="color: green;">{successMessage}</p>
+  {/if}
+
+  <!-- Task Name Field -->
+  <div class="form-group">
+    <label for="task_name">Name: </label>
+    <input type="text" id="task_name" bind:value={newTask.task_name} required />
+  </div>
+
+  <!-- Task Description Field -->
+  <div class="form-group">
+    <label for="task_description">Description: </label>
+    <textarea id="task_description" bind:value={newTask.task_description}></textarea>
+  </div>
+
+  <!-- Task Plan Field -->
+  <div class="form-group">
+    <label for="task_plan">Plan: </label>
+    <select bind:value={newTask.task_plan} style="width: 60%;">
+      {#each planNames as plan}
+        <option value={plan.plan_mvp_name}>{plan.plan_mvp_name}</option>
+      {/each}
+    </select>
+  </div>
+
+  <!-- Task Notes Field -->
+  <div class="form-group">
+    <label for="task_notes">Notes: </label>
+    <textarea id="task_notes" bind:value={newTask.task_notes}></textarea>
+  </div>
+
+  <div class="modal-footer">
+    <button class="button" on:click={handleCreateTask}>Create Task</button>
+  </div>
+</TaskModal>
+
 <style>
+  .header-buttons {
+    padding-top: 20px;
+    padding-right: 40px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  .create-task-button, .plan-button {
+    background-color: #007BFF;
+    padding: 10px 20px;
+    border: none;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  /* Dropdown container */
+  .dropdown {
+    position: relative;
+    display: inline-block;
+  }
+
+  .dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    width: 100%;
+    box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+    z-index: 1;
+    right: 0;
+  }
+
+  .dropdown-content button {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .dropdown-content button:hover {
+    background-color: #f1f1f1;
+  }
+
+  .dropdown:hover .dropdown-content {
+    display: block;
+  }
+
+  .form-group {
+		margin-bottom: 10px;
+		display: flex;
+		flex-direction: column;
+	}
+
+  .form-group label {
+		margin-bottom: 5px;
+		font-size: small;
+	}
+
+	.form-group input,
+	.form-group textarea,
+	.form-group select {
+		padding: 5px;
+		border: 1px solid #ccc;
+		border-radius: 5px;
+		width: 80%;
+	}
+
   .kanban-board {
     display: grid;
     grid-template-columns: repeat(5, 1fr);

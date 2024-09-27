@@ -30,7 +30,7 @@ exports.getAppDetails = async (req, res, next) => {
   try {
     const query = "SELECT * FROM application WHERE app_acronym = ?"
 
-    const [results] = await pool.query(query, [app_acronym])
+    const [results] = await pool.execute(query, [app_acronym])
 
     return res.status(200).json({
       success: true,

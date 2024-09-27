@@ -3,10 +3,13 @@
 	import { axios } from '$lib/config';
 	import { goto } from '$app/navigation';
 	import Modal from '$lib/components/Modal.svelte';
+	import AppModal from '$lib/components/AppModal.svelte';
 
 	let user = { user_name: '', email: '', active: 1, isAdmin: false };
 	let apps = [];
-	let showModal = false;
+	let appDetails = [];
+	let showModal = false; // modal for create app
+	let showAppModal = false; // modal for edit app
 	let newApp = { app_acronym: '', app_description: '', app_rnumber: '', app_startdate: '', app_enddate: '', app_permit_create: '', app_permit_open: '', app_permit_todolist: '', app_permit_doing: '', app_permit_done: '' };
 	let errorMessage = '';
 	let successMessage = '';
@@ -34,21 +37,34 @@
     }
   };
 
-  // Fetch all apps using the getAllApp
+  // Fetch all apps to display
   const fetchAllApp = async () => {
     try {
       const response = await axios.get('/api/v1/getAllApp', {
         withCredentials: true
       });
       apps = response.data.data;
-			//console.log(apps);
     } catch (error) {
       console.error("Error fetching apps:", error);
       errorMessage = 'Failed to fetch apps';
     }
   };
 
-	// Function to handle creating a new app
+	// Fetch app details to edit
+	const fetchAppDetails = async (appAcronym) => {
+    try {
+      const response = await axios.post('/api/v1/getAppDetails', { app_acronym: appAcronym }, 
+			{
+        withCredentials: true
+      });
+      appDetails = response.data.data[0];
+    } catch (error) {
+      console.error("Error fetching app details:", error);
+      errorMessage = 'Failed to fetch app details';
+    }
+  };
+
+	// Function to handle create app button
 	const handleCreateApp = async () => {
 		await checkStatus();
 		errorMessage = ''; // Reset error message
@@ -98,10 +114,22 @@
 		}
   };
 
-	// Function to handle view button click
-	const handleView = async (user) => {
+	//Button within modal
+	const handleEditApp = async () => {
+		await checkStatus();
+	}
+
+	// Function to handle view button
+	const handleView = async (appAcronym) => {
 		await checkStatus();
 		goto('/task');
+	};
+
+	// Function to handle edit button
+	const handleEdit = async (appAcronym) => {
+		await checkStatus();
+		await fetchAppDetails(appAcronym);
+		showAppModal = true;
 	};
 </script>
 
@@ -156,61 +184,67 @@
 			</div>
 		</div>
 
-		<h3>
+		<h4>
 			Permit Group
-		</h3>
+		</h4>
 
-		<!-- App Permit Create Field -->
-		<div class="form-group">
-			<label for="app_permit_create">Create: </label>
-			<select id="app_permit_create" bind:value={newApp.app_permit_create}>
-				<option value="Project Lead">Project Lead</option>
-				<option value="Project Manager">Project Manager</option>
-				<option value="Developer">Developer</option>
-			</select>
+		<div class="modal-content">
+			<div class="modal-left">
+				<!-- App Permit Create Field -->
+				<div class="form-group">
+					<label for="app_permit_create">Create: </label>
+					<select id="app_permit_create" bind:value={newApp.app_permit_create}>
+						<option value="Project Lead">Project Lead</option>
+						<option value="Project Manager">Project Manager</option>
+						<option value="Developer">Developer</option>
+					</select>
+				</div>
+
+				<!-- App Permit Open Field -->
+				<div class="form-group">
+					<label for="app_permit_open">Open: </label>
+					<select id="app_permit_open" bind:value={newApp.app_permit_open}>
+						<option value="Project Lead">Project Lead</option>
+						<option value="Project Manager">Project Manager</option>
+						<option value="Developer">Developer</option>
+					</select>
+				</div>
+
+				<!-- App Permit To-Do List Field -->
+				<div class="form-group">
+					<label for="app_permit_todolist">To-Do List: </label>
+					<select id="app_permit_todolist" bind:value={newApp.app_permit_todolist}>
+						<option value="Project Lead">Project Lead</option>
+						<option value="Project Manager">Project Manager</option>
+						<option value="Developer">Developer</option>
+					</select>
+				</div>
+			</div>
+
+			<div class="modal-right">
+				<!-- App Permit Doing Field -->
+				<div class="form-group">
+					<label for="app_permit_doing">Doing: </label>
+					<select id="app_permit_doing" bind:value={newApp.app_permit_doing}>
+						<option value="Project Lead">Project Lead</option>
+						<option value="Project Manager">Project Manager</option>
+						<option value="Developer">Developer</option>
+					</select>
+				</div>
+
+				<!-- App Permit Done Field -->
+				<div class="form-group">
+					<label for="app_permit_done">Done: </label>
+					<select id="app_permit_done" bind:value={newApp.app_permit_done}>
+						<option value="Project Lead">Project Lead</option>
+						<option value="Project Manager">Project Manager</option>
+						<option value="Developer">Developer</option>
+					</select>
+				</div>
+			</div>
 		</div>
 
-		<!-- App Permit Open Field -->
-		<div class="form-group">
-			<label for="app_permit_open">Open: </label>
-			<select id="app_permit_open" bind:value={newApp.app_permit_open}>
-				<option value="Project Lead">Project Lead</option>
-				<option value="Project Manager">Project Manager</option>
-				<option value="Developer">Developer</option>
-			</select>
-		</div>
-
-		<!-- App Permit To-Do List Field -->
-		<div class="form-group">
-			<label for="app_permit_todolist">To-Do List: </label>
-			<select id="app_permit_todolist" bind:value={newApp.app_permit_todolist}>
-				<option value="Project Lead">Project Lead</option>
-				<option value="Project Manager">Project Manager</option>
-				<option value="Developer">Developer</option>
-			</select>
-		</div>
-
-		<!-- App Permit Doing Field -->
-		<div class="form-group">
-			<label for="app_permit_doing">Doing: </label>
-			<select id="app_permit_doing" bind:value={newApp.app_permit_doing}>
-				<option value="Project Lead">Project Lead</option>
-				<option value="Project Manager">Project Manager</option>
-				<option value="Developer">Developer</option>
-			</select>
-		</div>
-
-		<!-- App Permit Done Field -->
-		<div class="form-group">
-			<label for="app_permit_done">Done: </label>
-			<select id="app_permit_done" bind:value={newApp.app_permit_done}>
-				<option value="Project Lead">Project Lead</option>
-				<option value="Project Manager">Project Manager</option>
-				<option value="Developer">Developer</option>
-			</select>
-		</div>
-
-		<button on:click={handleCreateApp}>Create App</button>
+		<button class="button" {handleCreateApp}>Create App</button>
 	</Modal>
 
 	<div class="app-list">
@@ -220,12 +254,110 @@
 				<p>{app.app_description}</p>
 				<p>{app.app_rnumber}</p>
 				<div class="app-footer">
-					<button class="view-button" on:click={() => handleView(user)}>View</button>
+					<button class="view-button" on:click={() => handleView(app.app_acronym)}>View</button>
+					<button class="edit-button" on:click={() => handleEdit(app.app_acronym)}>Edit</button>
 				</div>
 			</div>
 		{/each}
 	</div>
 </div>
+
+<AppModal bind:showAppModal>
+	<h3 slot="header">
+		Edit App
+	</h3>
+
+	<div class="form-group">
+		<label for="app_acronym">Acronym: </label>
+		<input type="text" id="app_acronym" disabled bind:value={appDetails.app_acronym} />
+	</div>
+
+	<div class="form-group">
+		<label for="app_description">Description: </label>
+		<textarea id="app_description" bind:value={appDetails.app_description}></textarea>
+	</div>
+
+	<div class="form-group">
+		<label for="app_rnumber">R Number: </label>
+		<input type="number" id="app_rnumber" disabled bind:value={appDetails.app_rnumber} required min="1" />
+	</div>
+
+	<div class="date-group">
+		<!-- App Start Date Field -->
+		<div class="form-group">
+			<label for="app_startdate">Start Date: </label>
+			<input type="date" id="app_startdate" disabled bind:value={appDetails.app_startdate} required />
+		</div>
+
+		<!-- App End Date Field -->
+		<div class="form-group" style="margin-left: 20px;">
+			<label for="app_enddate">End Date: </label>
+			<input type="date" id="app_enddate" disabled bind:value={appDetails.app_enddate} required />
+		</div>
+	</div>
+
+	<h4>
+		Permit Group
+	</h4>
+
+	<div class="modal-content">
+		<div class="modal-left">
+			<!-- App Permit Create Field -->
+			<div class="form-group">
+				<label for="app_permit_create">Create: </label>
+				<select id="app_permit_create" bind:value={appDetails.app_permit_create}>
+					<option value="Project Lead">Project Lead</option>
+					<option value="Project Manager">Project Manager</option>
+					<option value="Developer">Developer</option>
+				</select>
+			</div>
+
+			<!-- App Permit Open Field -->
+			<div class="form-group">
+				<label for="app_permit_open">Open: </label>
+				<select id="app_permit_open" bind:value={appDetails.app_permit_open}>
+					<option value="Project Lead">Project Lead</option>
+					<option value="Project Manager">Project Manager</option>
+					<option value="Developer">Developer</option>
+				</select>
+			</div>
+
+			<!-- App Permit To-Do List Field -->
+			<div class="form-group">
+				<label for="app_permit_todolist">To-Do List: </label>
+				<select id="app_permit_todolist" bind:value={appDetails.app_permit_todolist}>
+					<option value="Project Lead">Project Lead</option>
+					<option value="Project Manager">Project Manager</option>
+					<option value="Developer">Developer</option>
+				</select>
+			</div>
+		</div>
+
+		<div class="modal-right">
+			<!-- App Permit Doing Field -->
+			<div class="form-group">
+				<label for="app_permit_doing">Doing: </label>
+				<select id="app_permit_doing" bind:value={appDetails.app_permit_doing}>
+					<option value="Project Lead">Project Lead</option>
+					<option value="Project Manager">Project Manager</option>
+					<option value="Developer">Developer</option>
+				</select>
+			</div>
+
+			<!-- App Permit Done Field -->
+			<div class="form-group">
+				<label for="app_permit_done">Done: </label>
+				<select id="app_permit_done" bind:value={appDetails.app_permit_done}>
+					<option value="Project Lead">Project Lead</option>
+					<option value="Project Manager">Project Manager</option>
+					<option value="Developer">Developer</option>
+				</select>
+			</div>
+		</div>
+	</div>
+
+	<button class="button" {handleEditApp}>Edit App</button>
+</AppModal>
 
 <style>
 	.container {
@@ -317,5 +449,45 @@
   .view-button:focus {
     outline: 2px solid #000;
     outline-offset: 2px;
+  }
+
+	.edit-button {
+    background: none;
+    border: none;
+    color: rgb(227, 28, 28);
+    text-decoration: underline;
+    cursor: pointer;
+    padding-left: 15px;
+    font: inherit;
+  }
+
+	.edit-button:hover {
+    color: darkred;
+  }
+
+  .view-button:focus {
+    outline: 2px solid #000;
+    outline-offset: 2px;
+  }
+
+	.modal-content {
+    display: flex;
+    flex-direction: row;
+  }
+
+	.modal-left {
+    flex: 1;
+    margin-right: 20px;
+  }
+
+  .modal-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+	.button {
+		display: flex;
+    justify-content: flex-end;
   }
 </style>

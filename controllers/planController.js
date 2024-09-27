@@ -1,10 +1,10 @@
 const pool = require("../config/db_connection")
 const ErrorHandler = require("../utils/errorHandler")
 
+// get all plan name for dropdown
 exports.getAllPlan = async (req, res, next) => {
-  //not tested
   try {
-    const query = "SELECT * FROM plan"
+    const query = "SELECT plan_mvp_name FROM plan"
 
     const [results] = await pool.query(query)
 

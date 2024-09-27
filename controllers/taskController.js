@@ -80,21 +80,14 @@ exports.createTask = async (req, res, next) => {
   }
 }
 
+//update notes within the task
 exports.updateNotes = async (req, res, next) => {
   const { task_id, task_notes } = req.body
 
   try {
     const query = "UPDATE task SET task_notes = ? WHERE task_id = ?"
 
-    const [results] = await pool.query(query, [task_notes, task_id])
-
-    // Check if the app was updated (affectedRows > 0)
-    if (results.affectedRows === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "No changes made"
-      })
-    }
+    await pool.execute(query, [task_notes, task_id])
 
     return res.status(200).json({
       success: true,
@@ -117,7 +110,7 @@ exports.updateTaskPlan = async (req, res, next) => {
   try {
     const query = "UPDATE task SET task_plan = ? WHERE task_id = ?"
 
-    await pool.query(query, [task_plan, task_id])
+    await pool.execute(query, [task_plan, task_id])
 
     return res.status(200).json({
       success: true,
