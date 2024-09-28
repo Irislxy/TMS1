@@ -193,7 +193,6 @@
 
         // Check if username and password are provided
         if (!newUser.user_name || !newUser.password) {
-            errorMessage = '';
             errorMessage = 'Please provide username and password';
             return;
         }
@@ -201,7 +200,6 @@
         // Check if username is alphanumeric
         const usernameRegex = /^[a-zA-Z0-9]+$/; // Regex for alphanumeric characters
         if (!usernameRegex.test(newUser.user_name)) {
-            errorMessage = '';
             errorMessage = 'Username must be alphanumeric';
             return; // Exit the function if the username is invalid
         }
@@ -209,7 +207,6 @@
         // Check if password meet requirements
         const passwordRegex = /((?=.*\d)(?=.*[a-zA-Z])(?=.*[\W\_]).{8,10})/g;
         if (!passwordRegex.test(newUser.password)) {
-            errorMessage = '';
             errorMessage = 'Password does not meet requirements';
             return;
         }
@@ -217,7 +214,6 @@
         // Check if email meet requirements
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         if (!emailRegex.test(newUser.email)) {
-            errorMessage = '';
             errorMessage = 'Email must be in the correct format';
             return;
         }
@@ -243,7 +239,6 @@
                     active: newUser.active,
                     groups: newUser.group_name
                 });
-                //console.log(newUser.group_name);
                 users = users;
                 newUser = { user_name: '', password: '', email: '', active: 1, group_name: []  }; // Reset the form
                 groupLabels = [];

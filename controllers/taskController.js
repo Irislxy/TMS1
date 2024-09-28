@@ -1,15 +1,42 @@
 const pool = require("../config/db_connection")
 const ErrorHandler = require("../utils/errorHandler")
 
-// get all task within an app
-exports.getAllTask = async (req, res, next) => {
-  //not tested
+// get all task by app
+exports.getAllTaskByApp = async (req, res, next) => {
+  const { task_app_acronym } = req.body
+
+  // Check if task_app_acronym is defined
+  if (!task_app_acronym) {
+    return next(new ErrorHandler("Task App Acronym is not defined", 400))
+  }
   try {
-    const query = "SELECT * FROM task"
+    const query = "SELECT * FROM task WHERE task_app_acronym = ?"
 
-    const [results] = await pool.query(query)
+    const [results] = await pool.execute(query, [task_app_acronym])
 
-    // Return all task
+    return res.status(200).json({
+      success: true,
+      data: results
+    })
+  } catch (error) {
+    console.error("Error while getting all task:", error)
+    return next(new ErrorHandler("Error while getting all task", 500))
+  }
+}
+
+// get all task by plan
+exports.getAllTaskByPlan = async (req, res, next) => {
+  const { task_plan } = req.body
+
+  // Check if task_plan is defined
+  if (!task_plan) {
+    return next(new ErrorHandler("Task Plan is not defined", 400))
+  }
+  try {
+    const query = "SELECT * FROM task WHERE task_plan = ?"
+
+    const [results] = await pool.execute(query, [task_plan])
+
     return res.status(200).json({
       success: true,
       data: results
@@ -31,7 +58,7 @@ exports.getTaskDetails = async (req, res, next) => {
   try {
     const query = "SELECT * FROM task WHERE task_id = ?"
 
-    const [results] = await pool.query(query, [task_id])
+    const [results] = await pool.execute(query, [task_id])
 
     return res.status(200).json({
       success: true,

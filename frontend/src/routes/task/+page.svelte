@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { axios } from '$lib/config';
   import { goto } from '$app/navigation';
+  import { app_name } from '$lib/stores.js';
   import Modal from '$lib/components/Modal.svelte';
   import TaskModal from '$lib/components/TaskModal.svelte';
   import PlanModal from '$lib/components/PlanModal.svelte';
@@ -9,6 +10,8 @@
   let showModal = false; // modal for task details
   let showTaskModal = false; // modal for create task
   let showPlanModal = false; // modal for create plan
+  let currentAppAcronym = '';
+  let fetchedTasks = [];
   let taskDetails = [];
   let planNames = [];
   let originalPlan = '';
@@ -27,16 +30,26 @@
 
   // Fetch task details when component mounts
   onMount(async () => {
-    await fetchAllTask();
+    await fetchAllTaskByApp();
     await fetchPlanNames();
   });
 
-  // fetch all task
-  const fetchAllTask = async () => {
+  // fetch all task with task_app_acronym provided
+  const fetchAllTaskByApp = async () => {
+    // Get the current app acronym from the store
+    app_name.subscribe(value => {
+      currentAppAcronym = value;
+    });
+
+    if (!currentAppAcronym) {
+      errorMessage = 'No application selected.';
+      return;
+    }
+
     try {
-      const response = await axios.get('/api/v1/getAllTask', { withCredentials: true });
+      const response = await axios.post('/api/v1/getAllTaskByApp', { task_app_acronym: currentAppAcronym }, { withCredentials: true });
       
-      const fetchedTasks = response.data.data;
+      fetchedTasks = response.data.data;
       
       // Sort tasks based on their status
       tasks = {
@@ -51,6 +64,39 @@
       console.error(error);
       errorMessage = 'Failed to fetch all tasks';
     }
+  };
+
+  // fetch all task with task_plan provided
+  const fetchAllTaskByPlan = async (taskPlan) => {
+
+    if (!taskPlan) {
+      errorMessage = 'No plan selected.';
+      return;
+    }
+
+    try {
+      const response = await axios.post('/api/v1/getAllTaskByPlan', { task_plan: taskPlan }, { withCredentials: true });
+      
+      fetchedTasks = response.data.data;
+      
+      // Sort tasks based on their status
+      tasks = {
+        open: fetchedTasks.filter(task => task.task_state === 'open'),
+        todo: fetchedTasks.filter(task => task.task_state === 'todo'),
+        doing: fetchedTasks.filter(task => task.task_state === 'doing'),
+        done: fetchedTasks.filter(task => task.task_state === 'done'),
+        close: fetchedTasks.filter(task => task.task_state === 'close')
+      };
+      //console.log('Open Tasks:', tasks.open);
+    } catch (error) {
+      console.error(error);
+      errorMessage = 'Failed to fetch all tasks';
+    }
+  };
+
+  // Call this when a plan is selected
+  const onPlanSelected = async (taskPlan) => {
+    await fetchAllTaskByPlan(taskPlan); // Fetch tasks based on the selected plan
   };
 
   // fetch specific task details with taskId provided
@@ -190,7 +236,7 @@
     <button class="plan-button">Plan</button>
     <div class="dropdown-content">
       {#each planNames as plan}
-        <button on:click={() => openPlan(plan.plan_mvp_name)}>{plan.plan_mvp_name}</button>
+        <button on:click={() => onPlanSelected(plan.plan_mvp_name)}>{plan.plan_mvp_name}</button>
       {/each}
       <button on:click={() => (showPlanModal = true)}>Create New Plan</button>
     </div>
@@ -287,93 +333,89 @@
   <p style="color: green;">{successMessage}</p>
   {/if}
 
-  <div class="modal-content">
-    <!-- Left Section -->
-    <div class="modal-left">
-      <p><strong>ID:</strong> {taskDetails.task_id}</p>
-      <p><strong>Name:</strong> {taskDetails.task_name}</p>
-      <p><strong>Description:</strong> {taskDetails.task_description}</p>
-      <p><strong>State:</strong> {taskDetails.task_state}</p>
-      <label for="new-plan"><strong>Plan:</strong> </label>
-      <select bind:value={taskDetails.task_plan} style="width: 60%;">
+  <form class="task-details-form">
+    <div class="modal-content">
+      <!-- Left Section -->
+      <div class="modal-left">
+        <p><strong>ID:</strong> {taskDetails.task_id}</p>
+        <p><strong>Name:</strong> {taskDetails.task_name}</p>
+        <p><strong>Description:</strong> {taskDetails.task_description}</p>
+        <p><strong>State:</strong> {taskDetails.task_state}</p>
+        <label for="new-plan"><strong>Plan:</strong> </label>
+        <select bind:value={taskDetails.task_plan} style="width: 60%;">
+          {#each planNames as plan}
+            <option value={plan.plan_mvp_name}>{plan.plan_mvp_name}</option>
+          {/each}
+        </select>
+        <p><strong>Creator:</strong> {taskDetails.task_creator}</p>
+        <p><strong>Owner:</strong> {taskDetails.task_owner}</p>
+        <p><strong>Created date:</strong> {taskDetails.task_createdate}</p>
+      </div>
+
+      <!-- Right Section -->
+      <div class="modal-right">
+        <div class="notes-area">
+          <label for="notes"><strong>Notes:</strong></label>
+          <textarea id="notes" disabled>{taskDetails.task_notes}</textarea>
+        </div>
+        <div class="notes-area">
+          <textarea id="userNotes" bind:value={newNotes} placeholder="Enter notes here..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="button" on:click={handleSave}>Save</button>
+      <button class="button" on:click={handleDemote}>Demote</button>
+      <button class="button" on:click={handlePromote}>Promote</button>
+    </div>
+  </form>
+</Modal>
+
+<TaskModal bind:showTaskModal>
+  <h2 slot="header">Create Task</h2>
+
+  {#if errorMessage}
+    <p style="color: red;">{errorMessage}</p>
+  {/if}
+
+  {#if successMessage}
+  <p style="color: green;">{successMessage}</p>
+  {/if}
+
+  <form on:submit={handleCreateTask} class="create-task-form">
+    <div class="form-group">
+      <label for="task_name">Name: </label>
+      <input type="text" id="task_name" bind:value={newTask.task_name} required />
+    </div>
+
+    <div class="form-group">
+      <label for="task_description">Description: </label>
+      <textarea id="task_description" bind:value={newTask.task_description}></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="task_plan">Plan: </label>
+      <select bind:value={newTask.task_plan} style="width: 60%;">
         {#each planNames as plan}
           <option value={plan.plan_mvp_name}>{plan.plan_mvp_name}</option>
         {/each}
       </select>
-      <p><strong>Creator:</strong> {taskDetails.task_creator}</p>
-      <p><strong>Owner:</strong> {taskDetails.task_owner}</p>
-      <p><strong>Created date:</strong> {taskDetails.task_createdate}</p>
     </div>
 
-    <!-- Right Section -->
-    <div class="modal-right">
-      <div class="notes-area">
-        <label for="notes"><strong>Notes:</strong></label>
-        <textarea id="notes" disabled>{taskDetails.task_notes}</textarea>
-      </div>
-      <div class="notes-area">
-        <textarea id="userNotes" bind:value={newNotes} placeholder="Enter notes here..."></textarea>
-      </div>
+    <div class="form-group">
+      <label for="task_notes">Notes: </label>
+      <textarea id="task_notes" bind:value={newTask.task_notes}></textarea>
     </div>
-  </div>
 
-  <div class="modal-footer">
-    <button class="button" on:click={handleSave}>Save</button>
-    <button class="button" on:click={handleDemote}>Demote</button>
-    <button class="button" on:click={handlePromote}>Promote</button>
-  </div>
-</Modal>
-
-<TaskModal bind:showTaskModal>
-  <h2 slot="header">
-		Create Task
-	</h2>
-
-  {#if errorMessage}
-    <p style="color: red;">{errorMessage}</p>
-  {/if}
-
-  {#if successMessage}
-  <p style="color: green;">{successMessage}</p>
-  {/if}
-
-  <!-- Task Name Field -->
-  <div class="form-group">
-    <label for="task_name">Name: </label>
-    <input type="text" id="task_name" bind:value={newTask.task_name} required />
-  </div>
-
-  <!-- Task Description Field -->
-  <div class="form-group">
-    <label for="task_description">Description: </label>
-    <textarea id="task_description" bind:value={newTask.task_description}></textarea>
-  </div>
-
-  <!-- Task Plan Field -->
-  <div class="form-group">
-    <label for="task_plan">Plan: </label>
-    <select bind:value={newTask.task_plan} style="width: 60%;">
-      {#each planNames as plan}
-        <option value={plan.plan_mvp_name}>{plan.plan_mvp_name}</option>
-      {/each}
-    </select>
-  </div>
-
-  <!-- Task Notes Field -->
-  <div class="form-group">
-    <label for="task_notes">Notes: </label>
-    <textarea id="task_notes" bind:value={newTask.task_notes}></textarea>
-  </div>
-
-  <div class="modal-footer">
-    <button class="button" on:click={handleCreateTask}>Create Task</button>
-  </div>
+    <div class="modal-footer">
+      <button type="submit" class="button">Create Task</button>
+    </div>
+  </form>
 </TaskModal>
 
 <PlanModal bind:showPlanModal>
-  <h2 slot="header">
-		Create Plan
-	</h2>
+  <h2 slot="header">Create Plan</h2>
 
   {#if errorMessage}
     <p style="color: red;">{errorMessage}</p>
@@ -383,37 +425,39 @@
   <p style="color: green;">{successMessage}</p>
   {/if}
 
-  <div class="form-group">
-    <label for="plan_name">Name: </label>
-    <input type="text" id="plan_name" bind:value={newPlan.plan_mvp_name} required />
-  </div>
-
-  <div class="date-group">
-    <!-- App Start Date Field -->
+  <form on:submit={handleCreatePlan} class="create-plan-form">
     <div class="form-group">
-      <label for="plan_startdate">Start Date: </label>
-      <input type="date" id="plan_startdate" bind:value={newPlan.plan_startdate} required />
+      <label for="plan_name">Name: </label>
+      <input type="text" id="plan_name" bind:value={newPlan.plan_mvp_name} required />
     </div>
 
-    <!-- App End Date Field -->
-    <div class="form-group" style="margin-left: 20px;">
-      <label for="plan_enddate">End Date: </label>
-      <input type="date" id="plan_enddate" bind:value={newPlan.plan_enddate} required />
+    <div class="date-group">
+      <!-- App Start Date Field -->
+      <div class="form-group">
+        <label for="plan_startdate">Start Date: </label>
+        <input type="date" id="plan_startdate" bind:value={newPlan.plan_startdate} required />
+      </div>
+
+      <!-- App End Date Field -->
+      <div class="form-group" style="margin-left: 20px;">
+        <label for="plan_enddate">End Date: </label>
+        <input type="date" id="plan_enddate" bind:value={newPlan.plan_enddate} required />
+      </div>
     </div>
-  </div>
 
-  <div class="form-group">
-    <label for="plan_colour">Colour: </label>
-    <select bind:value={newPlan.plan_colour} style="width: 82.7%;">
-      <option value="red">Red</option>
-      <option value="green">Green</option>
-      <option value="orange">Orange</option>
-    </select>
-  </div>
+    <div class="form-group">
+      <label for="plan_colour">Colour: </label>
+      <select bind:value={newPlan.plan_colour} style="width: 82.7%;">
+        <option value="red">Red</option>
+        <option value="green">Green</option>
+        <option value="orange">Orange</option>
+      </select>
+    </div>
 
-  <div class="modal-footer">
-    <button class="button" on:click={handleCreatePlan}>Create Plan</button>
-  </div>
+    <div class="modal-footer">
+      <button type="submit" class="button">Create Plan</button>
+    </div>
+  </form>
 </PlanModal>
 
 <style>

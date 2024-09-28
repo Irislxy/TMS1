@@ -7,7 +7,6 @@ exports.getAllApp = async (req, res, next) => {
 
     const [results] = await pool.query(query)
 
-    // Return all apps
     return res.status(200).json({
       success: true,
       data: results
@@ -19,7 +18,6 @@ exports.getAllApp = async (req, res, next) => {
 }
 
 exports.getAppDetails = async (req, res, next) => {
-  // Extract app_acronym from the request body
   const { app_acronym } = req.body
 
   // Check if app_acronym is defined
@@ -42,9 +40,17 @@ exports.getAppDetails = async (req, res, next) => {
   }
 }
 
-// Only PL can create app (not tested)
+// Only PL can create app
 exports.createApp = async (req, res, next) => {
-  // let is_PL = await checkGroup(username, "PL")
+  let username = req.user.username
+  let is_PL = await checkGroup(username, "pl")
+
+  if (!is_PL) {
+    return res.status(500).json({
+      message: "Do not have permission to access this resource"
+    })
+  }
+
   const { app_acronym, app_description, app_rnumber, app_startdate, app_enddate, app_permit_create, app_permit_open, app_permit_todolist, app_permit_doing, app_permit_done } = req.body
 
   // Checking if all required fields are provided
@@ -86,30 +92,50 @@ exports.createApp = async (req, res, next) => {
   }
 }
 
-// Only PL can update app (not tested)
+// Only PL can update app
 exports.updateApp = async (req, res, next) => {
-  // let is_PL = await checkGroup(username, "PL")
-  const { app_acronym, app_description, app_rnumber, app_startdate, app_enddate, app_permit_create, app_permit_open, app_permit_todolist, app_permit_doing, app_permit_done } = req.body
+  let username = req.user.username
+  let is_PL = await checkGroup(username, "pl")
 
-  // Checking if all required fields are provided
-  if (!app_acronym || !app_rnumber || !app_startdate || !app_enddate) {
-    return next(new ErrorHandler("All fields are required", 500))
+  if (!is_PL) {
+    return res.status(500).json({
+      message: "Do not have permission to access this resource"
+    })
   }
 
+  const { app_description, app_permit_create, app_permit_open, app_permit_todolist, app_permit_doing, app_permit_done, app_acronym } = req.body
+
   try {
-    const query = "UPDATE application SET app_description = ?, app_rnumber = ?, app_startdate = ?, app_enddate = ?, app_permit_create = ?, app_permit_open = ?, app_permit_todolist = ?, app_permit_doing = ?,app_permit_done = ? WHERE app_acronym = ?"
+    // Fetch the current app data
+    const [rows] = await pool.execute("SELECT * FROM application WHERE app_acronym = ?", [app_acronym])
+    const currentAppData = rows[0]
 
-    await pool.execute(query, [app_description || null, app_rnumber, app_startdate, app_enddate, app_permit_create || null, app_permit_open || null, app_permit_todolist || null, app_permit_doing || null, app_permit_done || null, app_acronym])
+    if (!currentAppData) {
+      return res.status(404).json({
+        message: "App not found"
+      })
+    }
 
-    return res.status(200).json({
+    // Compare each field with the current data to check if any changes were made
+    let noChanges = (app_description === "" || currentAppData.app_description === app_description) && (app_permit_create === "" || currentAppData.app_permit_create === app_permit_create) && (app_permit_open === "" || currentAppData.app_permit_open === app_permit_open) && (app_permit_todolist === "" || currentAppData.app_permit_todolist === app_permit_todolist) && (app_permit_doing === "" || currentAppData.app_permit_doing === app_permit_doing) && (app_permit_done === "" || currentAppData.app_permit_done === app_permit_done)
+
+    if (noChanges) {
+      return res.status(200).json({
+        success: true,
+        message: "No changes were made"
+      })
+    }
+
+    const query = "UPDATE application SET app_description = ?, app_permit_create = ?, app_permit_open = ?, app_permit_todolist = ?, app_permit_doing = ?,app_permit_done = ? WHERE app_acronym = ?"
+
+    await pool.execute(query, [app_description || null, app_permit_create || null, app_permit_open || null, app_permit_todolist || null, app_permit_doing || null, app_permit_done || null, app_acronym])
+
+    return res.status(201).json({
       success: true,
       message: "App updated",
       data: {
         app_acronym: app_acronym,
         app_description: app_description,
-        app_rnumber: app_rnumber,
-        app_startdate: app_startdate,
-        app_enddate: app_enddate,
         app_permit_create: app_permit_create,
         app_permit_open: app_permit_open,
         app_permit_todolist: app_permit_todolist,

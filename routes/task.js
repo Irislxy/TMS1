@@ -5,7 +5,8 @@ const { isAuthenticated } = require("../middlewares/verifyJWT")
 // Importing appList controller methods
 const taskController = require("../controllers/taskController")
 
-router.get("/getAllTask", isAuthenticated, taskController.getAllTask)
+router.post("/getAllTaskByApp", isAuthenticated, taskController.getAllTaskByApp)
+router.post("/getAllTaskByPlan", isAuthenticated, taskController.getAllTaskByPlan)
 router.post("/getTaskDetails", isAuthenticated, taskController.getTaskDetails)
 router.post("/createTask", isAuthenticated, taskController.createTask)
 router.put("/updateNotes", isAuthenticated, taskController.updateNotes)

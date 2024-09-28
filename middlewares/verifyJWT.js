@@ -46,7 +46,9 @@ exports.isAuthenticated = async (req, res, next) => {
   // Check if the user is an admin
   const isAdmin = await checkGroup(username, "admin")
   req.isAdmin = isAdmin
-  //console.log(req.isAdmin)
+
+  const isPL = await checkGroup(username, "pl")
+  req.isPL = isPL
 
   next()
 }
