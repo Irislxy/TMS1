@@ -6,17 +6,22 @@
   import Modal from '$lib/components/Modal.svelte';
   import TaskModal from '$lib/components/TaskModal.svelte';
   import PlanModal from '$lib/components/PlanModal.svelte';
+  import EditPlanModal from '$lib/components/EditPlanModal.svelte';
   
   let showModal = false; // modal for task details
   let showTaskModal = false; // modal for create task
   let showPlanModal = false; // modal for create plan
+  let editPlanModal = false; // modal for edit plan
+  let user = { user_name: '', email: '', active: 1, isAdmin: false, isPL: false, isPM: false };
   let currentAppAcronym = '';
   let fetchedTasks = [];
   let taskDetails = [];
   let planNames = [];
   let originalPlan = '';
+  let planDetails = [];
   let newNotes = '';
   let newPlan = { plan_app_acronym: '', plan_mvp_name: '', plan_startdate: '', plan_enddate: '', plan_colour: ''}
+  let editPlan = { plan_app_acronym: '', plan_mvp_name: '', plan_startdate: '', plan_enddate: '', plan_colour: ''}
   let newTask = { task_id: '', task_name: '', task_description: '', task_notes: '', task_plan: '', task_app_acronym: '', task_state: '', task_creator: '', task_owner: '', task_createdate: ''}
   let errorMessage = '';
 	let successMessage = '';
@@ -30,9 +35,28 @@
 
   // Fetch task details when component mounts
   onMount(async () => {
+    await checkStatus();
     await fetchAllTaskByApp();
     await fetchPlanNames();
   });
+
+  const checkStatus = async () => {
+    try {
+      const response = await axios.get('/api/v1/getUserDetails', { withCredentials: true });
+      user.user_name = response.data.user.username;
+      user.email = response.data.user.email;
+      user.active = response.data.user.active;
+      user.isAdmin = response.data.user.isAdmin;
+			user.isPL = response.data.user.isPL;
+      user.isPM = response.data.user.isPM;
+    } catch (error) {
+      if (error.response.data.errMessage == "User is not found or disabled") {
+        goto('/');
+      }
+      errorMessage = 'Failed to fetch user profile';
+    }
+  };
+
 
   // fetch all task with task_app_acronym provided
   const fetchAllTaskByApp = async () => {
@@ -66,41 +90,9 @@
     }
   };
 
-  // fetch all task with task_plan provided
-  const fetchAllTaskByPlan = async (taskPlan) => {
-
-    if (!taskPlan) {
-      errorMessage = 'No plan selected.';
-      return;
-    }
-
-    try {
-      const response = await axios.post('/api/v1/getAllTaskByPlan', { task_plan: taskPlan }, { withCredentials: true });
-      
-      fetchedTasks = response.data.data;
-      
-      // Sort tasks based on their status
-      tasks = {
-        open: fetchedTasks.filter(task => task.task_state === 'open'),
-        todo: fetchedTasks.filter(task => task.task_state === 'todo'),
-        doing: fetchedTasks.filter(task => task.task_state === 'doing'),
-        done: fetchedTasks.filter(task => task.task_state === 'done'),
-        close: fetchedTasks.filter(task => task.task_state === 'close')
-      };
-      //console.log('Open Tasks:', tasks.open);
-    } catch (error) {
-      console.error(error);
-      errorMessage = 'Failed to fetch all tasks';
-    }
-  };
-
-  // Call this when a plan is selected
-  const onPlanSelected = async (taskPlan) => {
-    await fetchAllTaskByPlan(taskPlan); // Fetch tasks based on the selected plan
-  };
-
   // fetch specific task details with taskId provided
   const fetchTaskDetails = async (taskId) => {
+    await checkStatus();
     try {
       const response = await axios.post('/api/v1/getTaskDetails', { task_id: taskId }, { withCredentials: true });
       taskDetails = response.data.data[0]; // Get the first task in the array
@@ -127,8 +119,23 @@
     }
   }
 
+  // Fetch plan details to edit
+	const fetchPlanDetails = async (planName) => {
+    try {
+      const response = await axios.post('/api/v1/getPlanDetails', { plan_mvp_name: planName }, { withCredentials: true });
+      planDetails = response.data.data[0];
+    } catch (error) {
+      console.error("Error fetching plan details:", error);
+      errorMessage = 'Failed to fetch plan details';
+    }
+  };
+
   // Function to update plan dropdown within task with taskId provided
-  const updatePlan = async (taskId, updatedPlan) => {
+  const updateTaskPlan = async (taskId, updatedPlan) => {
+    await checkStatus();
+    errorMessage = ''; // Reset error message
+		successMessage = ''; // Reset success message
+
     const updateData = { task_id: taskId, task_plan: updatedPlan };
     try {
       await axios.put('/api/v1/updateTaskPlan', updateData, { withCredentials: true });
@@ -142,6 +149,10 @@
 
   // Function to update task notes within task with taskId provided
   const updateNotes = async (taskId) => {
+    await checkStatus();
+    errorMessage = ''; // Reset error message
+		successMessage = ''; // Reset success message
+    
     const updateData = { task_id: taskId, task_notes: newNotes };
     try {
       await axios.put('/api/v1/updateNotes', updateData, { withCredentials: true });
@@ -154,9 +165,10 @@
   };
 
   const handleSave = async () => {
+    await checkStatus();
     // handle changed plan
     if (taskDetails.task_id && taskDetails.task_plan !== originalPlan) {
-      await updatePlan(taskDetails.task_id, taskDetails.task_plan);
+      await updateTaskPlan(taskDetails.task_id, taskDetails.task_plan);
     } else {
       errorMessage = 'No changes were made';
     }
@@ -166,9 +178,10 @@
 
   // todo: task state
   const handleDemote = async () => {
+    await checkStatus();
     // handle changed plan
     if (taskDetails.task_id && taskDetails.task_plan !== originalPlan) {
-      await updatePlan(taskDetails.task_id, taskDetails.task_plan);
+      await updateTaskPlan(taskDetails.task_id, taskDetails.task_plan);
     } else {
       errorMessage = 'No changes were made';
     }
@@ -178,9 +191,10 @@
 
   // todo: task state
   const handlePromote = async () => {
+    await checkStatus();
     // handle changed plan
     if (taskDetails.task_id && taskDetails.task_plan !== originalPlan) {
-      await updatePlan(taskDetails.task_id, taskDetails.task_plan);
+      await updateTaskPlan(taskDetails.task_id, taskDetails.task_plan);
     } else {
       errorMessage = 'No changes were made';
     }
@@ -190,7 +204,10 @@
 
 
   const handleCreateTask = async () => {
+    await checkStatus();
     showTaskModal = True;
+    errorMessage = ''; // Reset error message
+		successMessage = ''; // Reset success message
     
     try {
       await axios.post('/api/v1/createTask', newTask, { withCredentials: true });
@@ -206,8 +223,13 @@
 
   // Function to create plan
   const handleCreatePlan = async () => {
+    await checkStatus();
+    errorMessage = ''; // Reset error message
+		successMessage = ''; // Reset success message
+    newPlan.plan_app_acronym = currentAppAcronym;
+
     // Check if all required fields are provided
-		if (!newPlan.plan_app_acronym || !newPlan.plan_mvp_name || !newPlan.plan_startdate || !newPlan.plan_enddate || !newPlan.plan_colour) {
+		if (!newPlan.plan_mvp_name || !newPlan.plan_startdate || !newPlan.plan_enddate || !newPlan.plan_colour) {
 			errorMessage = 'All fields are required';
 			return;
   	}
@@ -217,6 +239,8 @@
 
       errorMessage = '';
       successMessage = 'Plan Created';
+      newPlan = {};
+      await fetchPlanNames();
       showPlanModal = true;
     } catch (error) {
       console.error(error);
@@ -224,23 +248,56 @@
     }
   };
 
-  const openPlan = async () => {
-    goto('/appList');
-  }
+  // Call this when a plan is selected
+  const onPlanSelected = async (planName) => {
+    await checkStatus();
+    await fetchPlanDetails(planName);
+
+    editPlan = {
+			plan_mvp_name: planDetails.plan_mvp_name, // Prepopulate with existing values
+			plan_startdate: planDetails.plan_startdate,
+			plan_enddate: planDetails.plan_enddate,
+			plan_colour: planDetails.plan_colour
+    };
+    editPlanModal = true;
+  };
+
+  const handleEditPlan = async () => { //No changes hvt implement
+    await checkStatus();
+    errorMessage = ''; // Reset error message
+		successMessage = ''; // Reset success message
+    editPlan.plan_app_acronym = currentAppAcronym;
+
+    try {
+      await axios.patch('/api/v1/updatePlan', editPlan, { withCredentials: true });
+
+      successMessage = 'Plan Updated';
+      editPlanModal = true;
+    } catch (error) {
+      console.error(error);
+      errorMessage = 'Failed to update plan';
+    }
+  };
 </script>
 
 <div class="header-buttons">
-  <button class="create-task-button" on:click={() => (showTaskModal = true)}>Create Task</button>
+  {#if user.isPL}
+    <button class="create-task-button" on:click={() => (showTaskModal = true)}>Create Task</button>
+  {/if}
 
-  <div class="dropdown">
-    <button class="plan-button">Plan</button>
-    <div class="dropdown-content">
-      {#each planNames as plan}
-        <button on:click={() => onPlanSelected(plan.plan_mvp_name)}>{plan.plan_mvp_name}</button>
-      {/each}
-      <button on:click={() => (showPlanModal = true)}>Create New Plan</button>
+  {#if user.isPL || user.isPM}
+    <div class="dropdown">
+      <button class="plan-button">Plan</button>
+      <div class="dropdown-content">
+        {#each planNames as plan}
+          <button on:click={() => onPlanSelected(plan.plan_mvp_name)}>{plan.plan_mvp_name}</button>
+        {/each}
+        {#if user.isPM}
+          <button on:click={() => (showPlanModal = true)}>Create New Plan</button>
+        {/if}
+      </div>
     </div>
-  </div>
+  {/if}
 </div>
 
 <div class="kanban-board">
@@ -459,6 +516,52 @@
     </div>
   </form>
 </PlanModal>
+
+<EditPlanModal bind:editPlanModal>
+  <h2 slot="header">Edit Plan</h2>
+
+  {#if errorMessage}
+    <p style="color: red;">{errorMessage}</p>
+  {/if}
+
+  {#if successMessage}
+  <p style="color: green;">{successMessage}</p>
+  {/if}
+
+  <form on:submit={handleEditPlan} class="edit-plan-form">
+    <div class="form-group">
+      <label for="plan_name">Name: </label>
+      <input type="text" id="plan_name" disabled bind:value={editPlan.plan_mvp_name} required />
+    </div>
+
+    <div class="date-group">
+      <!-- App Start Date Field -->
+      <div class="form-group">
+        <label for="plan_startdate">Start Date: </label>
+        <input type="date" id="plan_startdate" bind:value={editPlan.plan_startdate} required />
+      </div>
+
+      <!-- App End Date Field -->
+      <div class="form-group" style="margin-left: 20px;">
+        <label for="plan_enddate">End Date: </label>
+        <input type="date" id="plan_enddate" bind:value={editPlan.plan_enddate} required />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="plan_colour">Colour: </label>
+      <select bind:value={editPlan.plan_colour} style="width: 82.7%;">
+        <option value="red">Red</option>
+        <option value="green">Green</option>
+        <option value="orange">Orange</option>
+      </select>
+    </div>
+
+    <div class="modal-footer">
+      <button type="submit" class="button">Edit Plan</button>
+    </div>
+  </form>
+</EditPlanModal>
 
 <style>
   .header-buttons {

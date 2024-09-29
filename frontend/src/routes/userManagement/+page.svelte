@@ -76,7 +76,6 @@
         } catch (error) {
             if (error.response.data.errMessage == "User is not found or disabled") {
                 goto('/');
-                errorMessage = 'Invalid credentials. Please login again';
             }
             errorMessage = 'Failed to fetch user profile';
         }

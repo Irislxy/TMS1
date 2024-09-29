@@ -5,6 +5,7 @@
 
   export let pageTitle = 'App List'; // Default page title
   export let user;
+  let errorMessage = '';
   // let isAdmin = false;
 
   const goToProfile = () => {
@@ -48,7 +49,6 @@
       //console.log(error);
       if (error.response.data.errMessage == "User is not found or disabled") {
         logOut();
-        errorMessage = 'Invalid credentials. Please login again';
       }
       // errorMessage = 'Failed to fetch user profile';
     }

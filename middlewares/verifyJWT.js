@@ -50,6 +50,9 @@ exports.isAuthenticated = async (req, res, next) => {
   const isPL = await checkGroup(username, "pl")
   req.isPL = isPL
 
+  const isPM = await checkGroup(username, "pm")
+  req.isPM = isPM
+
   next()
 }
 

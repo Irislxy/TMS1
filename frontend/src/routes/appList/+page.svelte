@@ -6,7 +6,7 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import AppModal from '$lib/components/AppModal.svelte';
 
-	let user = { user_name: '', email: '', active: 1, isAdmin: false };
+	let user = { user_name: '', email: '', active: 1, isAdmin: false, isPL: false };
 	let apps = [];
 	let appDetails = [];
 	let showModal = false; // modal for create app

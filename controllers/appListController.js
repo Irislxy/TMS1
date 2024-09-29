@@ -17,7 +17,17 @@ exports.getAllApp = async (req, res, next) => {
   }
 }
 
+//get app details to edit (only pl)
 exports.getAppDetails = async (req, res, next) => {
+  let username = req.user.username
+  let is_PL = await checkGroup(username, "pl")
+
+  if (!is_PL) {
+    return res.status(500).json({
+      message: "Do not have permission to access this resource"
+    })
+  }
+
   const { app_acronym } = req.body
 
   // Check if app_acronym is defined

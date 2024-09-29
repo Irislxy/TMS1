@@ -1,14 +1,23 @@
 const pool = require("../config/db_connection")
 const ErrorHandler = require("../utils/errorHandler")
 
-// get all plan name for dropdown
+// get all plan name for dropdown(pl & pm)
 exports.getAllPlan = async (req, res, next) => {
+  let username = req.user.username
+  let is_PL = await checkGroup(username, "pl")
+  let is_PM = await checkGroup(username, "pm")
+
+  if (!is_PM && !is_PL) {
+    return res.status(500).json({
+      message: "Do not have permission to access this resource"
+    })
+  }
+
   try {
     const query = "SELECT plan_mvp_name FROM plan"
 
     const [results] = await pool.query(query)
 
-    // Return all plan
     return res.status(200).json({
       success: true,
       data: results
@@ -19,19 +28,29 @@ exports.getAllPlan = async (req, res, next) => {
   }
 }
 
+// get plan details to edit (pl & pm)
 exports.getPlanDetails = async (req, res, next) => {
-  //not tested
-  const { plan_app_acronym } = req.body
+  let username = req.user.username
+  let is_PL = await checkGroup(username, "pl")
+  let is_PM = await checkGroup(username, "pm")
 
-  // Check if plan_app_acronym is defined
-  if (!plan_app_acronym) {
-    return next(new ErrorHandler("Plan App acronym not defined", 400))
+  if (!is_PM && !is_PL) {
+    return res.status(500).json({
+      message: "Do not have permission to access this resource"
+    })
+  }
+
+  const { plan_mvp_name } = req.body
+
+  // Check if plan_mvp_name is defined
+  if (!plan_mvp_name) {
+    return next(new ErrorHandler("Plan name not defined", 400))
   }
 
   try {
-    const query = "SELECT * FROM plan WHERE plan_app_acronym = ?"
+    const query = "SELECT * FROM plan WHERE plan_mvp_name = ?"
 
-    const [results] = await pool.query(query, [plan_app_acronym])
+    const [results] = await pool.execute(query, [plan_mvp_name])
 
     return res.status(200).json({
       success: true,
@@ -45,9 +64,17 @@ exports.getPlanDetails = async (req, res, next) => {
 
 //only PM can create plan
 exports.createPlan = async (req, res, next) => {
-  // let is_PM = await checkGroup(username, "PM")
-  const { plan_mvp_name, plan_startdate, plan_enddate, plan_app_acronym, plan_colour } = req.body
-  // plan_app_acronym is passed into this function
+  let username = req.user.username
+  let is_PM = await checkGroup(username, "pm")
+
+  if (!is_PM) {
+    return res.status(500).json({
+      message: "Do not have permission to access this resource"
+    })
+  }
+
+  const { plan_mvp_name, plan_startdate, plan_enddate, plan_app_acronym, plan_colour } = req.body // plan_app_acronym is passed into this function
+
   // Check if all fields are provided
   if (!plan_mvp_name || !plan_startdate || !plan_enddate || !plan_colour) {
     return next(new ErrorHandler("All fields are required", 400))
@@ -58,7 +85,6 @@ exports.createPlan = async (req, res, next) => {
 
     await pool.execute(query, [plan_mvp_name, plan_startdate, plan_enddate, plan_app_acronym, plan_colour])
 
-    // Send success response
     return res.status(201).json({
       success: true,
       message: "Plan created",
@@ -76,21 +102,29 @@ exports.createPlan = async (req, res, next) => {
   }
 }
 
-// PL and PM can update plan
+// only PL and PM can update plan
 exports.updatePlan = async (req, res, next) => {
-  // let is_PL = await checkGroup(username, "PL")
-  // let is_PM = await checkGroup(username, "PM")
-  const { plan_mvp_name, plan_startdate, plan_enddate, plan_app_acronym, plan_colour } = req.body
-  // plan_app_acronym is passed into this function
+  let username = req.user.username
+  let is_PL = await checkGroup(username, "pl")
+  let is_PM = await checkGroup(username, "pm")
+
+  if (!is_PM && !is_PL) {
+    return res.status(500).json({
+      message: "Do not have permission to access this resource"
+    })
+  }
+
+  const { plan_mvp_name, plan_startdate, plan_enddate, plan_app_acronym, plan_colour } = req.body // plan_mvp_name is passed into this function
+
   // Check if all fields are provided
-  if (!plan_mvp_name || !plan_startdate || !plan_enddate || !plan_colour) {
+  if (!plan_mvp_name || !plan_startdate || !plan_enddate || !plan_app_acronym || !plan_colour) {
     return next(new ErrorHandler("All fields are required", 400))
   }
 
   try {
-    const query = "UPDATE plan SET plan_mvp_name = ?, plan_startdate = ?, plan_enddate = ?, plan_colour = ? WHERE plan_app_acronym = ?"
+    const query = "UPDATE plan SET plan_startdate = ?, plan_enddate = ?, plan_colour = ? WHERE plan_mvp_name = ? AND plan_app_acronym = ?"
 
-    await pool.execute(query, [plan_mvp_name, plan_startdate, plan_enddate, plan_colour, plan_app_acronym])
+    await pool.execute(query, [plan_startdate, plan_enddate, plan_colour, plan_mvp_name, plan_app_acronym])
 
     // Send success response
     return res.status(200).json({

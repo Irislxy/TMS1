@@ -27,7 +27,8 @@ exports.getUserDetails = async (req, res, next) => {
       email: results[0].email,
       active: results[0].active,
       isAdmin: req.isAdmin,
-      isPL: req.isPL
+      isPL: req.isPL,
+      isPM: req.isPM
     }
 
     // Send response

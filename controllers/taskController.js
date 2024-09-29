@@ -72,6 +72,15 @@ exports.getTaskDetails = async (req, res, next) => {
 
 //only PL can create task
 exports.createTask = async (req, res, next) => {
+  let username = req.user.username
+  let is_PL = await checkGroup(username, "pl")
+
+  if (!is_PL) {
+    return res.status(500).json({
+      message: "Do not have permission to access this resource"
+    })
+  }
+
   const { task_id, task_name, task_description, task_notes, task_plan, task_app_acronym, task_state, task_creator, task_owner, task_createdate } = req.body
 
   // Check if all fields are provided
@@ -150,5 +159,30 @@ exports.updateTaskPlan = async (req, res, next) => {
   } catch (error) {
     console.error("Error while updating task plan:", error)
     return next(new ErrorHandler("Error while updating task plan", 500))
+  }
+}
+
+const checkGroup = async (username, groupname) => {
+  //console.log(username)
+  //console.log(groupname)
+  try {
+    const [result] = await pool.query(
+      `SELECT *
+      FROM user u
+      JOIN user_group ug ON u.user_name = ug.user_name
+      JOIN group_list g ON ug.group_id = g.group_id
+      WHERE u.user_name = ? AND g.group_name = ?`,
+      [username, groupname]
+    )
+
+    //console.log(result.length)
+
+    if (result.length === 0) {
+      return false
+    }
+
+    return true
+  } catch (error) {
+    return false
   }
 }
