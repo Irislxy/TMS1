@@ -22,7 +22,7 @@
   let newNotes = '';
   let newPlan = { plan_app_acronym: '', plan_mvp_name: '', plan_startdate: '', plan_enddate: '', plan_colour: ''}
   let editPlan = { plan_app_acronym: '', plan_mvp_name: '', plan_startdate: '', plan_enddate: '', plan_colour: ''}
-  let newTask = { task_id: '', task_name: '', task_description: '', task_notes: '', task_plan: '', task_app_acronym: '', task_state: '', task_creator: '', task_owner: '', task_createdate: ''}
+  let newTask = { task_name: '', task_description: '', task_notes: '', task_plan: '', task_app_acronym: ''}
   let errorMessage = '';
 	let successMessage = '';
   let tasks = {
@@ -157,6 +157,8 @@
     try {
       await axios.put('/api/v1/updateNotes', updateData, { withCredentials: true });
 
+      await fetchTaskDetails(taskId);
+      newNotes = '';
       successMessage = 'Task Notes Updated';
     } catch (error) {
       console.error(error);
@@ -166,55 +168,72 @@
 
   const handleSave = async () => {
     await checkStatus();
+    errorMessage = ''; // Reset error message
+		successMessage = ''; // Reset success message
     // handle changed plan
     if (taskDetails.task_id && taskDetails.task_plan !== originalPlan) {
       await updateTaskPlan(taskDetails.task_id, taskDetails.task_plan);
-    } else {
-      errorMessage = 'No changes were made';
     }
-
+    // handle update notes
     await updateNotes(taskDetails.task_id);
   };
 
-  // todo: task state
   const handleDemote = async () => {
     await checkStatus();
+    errorMessage = ''; // Reset error message
+		successMessage = ''; // Reset success message
     // handle changed plan
     if (taskDetails.task_id && taskDetails.task_plan !== originalPlan) {
       await updateTaskPlan(taskDetails.task_id, taskDetails.task_plan);
-    } else {
-      errorMessage = 'No changes were made';
     }
-
+    // handle update notes
     await updateNotes(taskDetails.task_id);
+
+    // handle demote task
+    try {
+      await axios.patch('/api/v1/demoteTask', { task_id: taskDetails.task_id }, { withCredentials: true });
+      successMessage = 'Task Demoted';
+      await fetchTaskDetails();
+    } catch (error) {
+      console.error(error);
+      errorMessage = 'Failed to demote task';
+    }
   };
 
-  // todo: task state
   const handlePromote = async () => {
     await checkStatus();
+    errorMessage = ''; // Reset error message
+		successMessage = ''; // Reset success message
     // handle changed plan
     if (taskDetails.task_id && taskDetails.task_plan !== originalPlan) {
       await updateTaskPlan(taskDetails.task_id, taskDetails.task_plan);
-    } else {
-      errorMessage = 'No changes were made';
     }
-
+    // handle update notes
     await updateNotes(taskDetails.task_id);
-  };
 
+    // handle promote task
+    try {
+      const response = await axios.patch('/api/v1/promoteTask', { task_id: taskDetails.task_id }, { withCredentials: true });
+      successMessage = 'Task Promoted';
+    } catch (error) {
+      console.error(error);
+      errorMessage = 'Failed to promote task';
+    } 
+  };
 
   const handleCreateTask = async () => {
     await checkStatus();
-    showTaskModal = True;
     errorMessage = ''; // Reset error message
 		successMessage = ''; // Reset success message
+    newTask.task_app_acronym = currentAppAcronym;
     
     try {
       await axios.post('/api/v1/createTask', newTask, { withCredentials: true });
 
-      errorMessage = '';
       successMessage = 'Task Created';
-      showPlanModal = true;
+      showTaskModal = true;
+      newTask = {};
+      await fetchAllTaskByApp();
     } catch (error) {
       console.error(error);
       errorMessage = 'Failed to create task';
@@ -305,7 +324,7 @@
   <div class="kanban-column">
     <div class="column-header">Open</div>
     {#each tasks.open as task}
-      <div class="task-card">
+      <div class="task-card" style="border-left: 4px solid {task.plan_colour ? task.plan_colour : 'black'};">
         <h3>{task.task_name}</h3>
         <p>{task.task_description}</p>
         <div class="task-footer">
@@ -320,7 +339,7 @@
   <div class="kanban-column">
     <div class="column-header">Todo</div>
     {#each tasks.todo as task}
-      <div class="task-card">
+      <div class="task-card" style="border-left: 4px solid {task.plan_colour ? task.plan_colour : 'black'};">
         <h3>{task.task_name}</h3>
         <p>{task.task_description}</p>
         <div class="task-footer">
@@ -335,7 +354,7 @@
   <div class="kanban-column">
     <div class="column-header">Doing</div>
     {#each tasks.doing as task}
-      <div class="task-card">
+      <div class="task-card" style="border-left: 4px solid {task.plan_colour ? task.plan_colour : 'black'};">
         <h3>{task.task_name}</h3>
         <p>{task.task_description}</p>
         <div class="task-footer">
@@ -350,7 +369,7 @@
   <div class="kanban-column">
     <div class="column-header">Done</div>
     {#each tasks.done as task}
-      <div class="task-card">
+      <div class="task-card" style="border-left: 4px solid {task.plan_colour ? task.plan_colour : 'black'};">
         <h3>{task.task_name}</h3>
         <p>{task.task_description}</p>
         <div class="task-footer">
@@ -365,7 +384,7 @@
   <div class="kanban-column">
     <div class="column-header">Close</div>
     {#each tasks.close as task}
-      <div class="task-card">
+      <div class="task-card" style="border-left: 4px solid {task.plan_colour ? task.plan_colour : 'black'};">
         <h3>{task.task_name}</h3>
         <p>{task.task_description}</p>
         <div class="task-footer">

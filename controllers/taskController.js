@@ -10,32 +10,16 @@ exports.getAllTaskByApp = async (req, res, next) => {
     return next(new ErrorHandler("Task App Acronym is not defined", 400))
   }
   try {
-    const query = "SELECT * FROM task WHERE task_app_acronym = ?"
+    // Query to select tasks and plan colour by joining the plan table
+    const query = `
+      SELECT task.*, plan.plan_colour 
+      FROM task
+      LEFT JOIN plan 
+      ON task.task_plan = plan.plan_mvp_name 
+      WHERE task.task_app_acronym = ?
+    `
 
     const [results] = await pool.execute(query, [task_app_acronym])
-
-    return res.status(200).json({
-      success: true,
-      data: results
-    })
-  } catch (error) {
-    console.error("Error while getting all task:", error)
-    return next(new ErrorHandler("Error while getting all task", 500))
-  }
-}
-
-// get all task by plan
-exports.getAllTaskByPlan = async (req, res, next) => {
-  const { task_plan } = req.body
-
-  // Check if task_plan is defined
-  if (!task_plan) {
-    return next(new ErrorHandler("Task Plan is not defined", 400))
-  }
-  try {
-    const query = "SELECT * FROM task WHERE task_plan = ?"
-
-    const [results] = await pool.execute(query, [task_plan])
 
     return res.status(200).json({
       success: true,
@@ -81,19 +65,56 @@ exports.createTask = async (req, res, next) => {
     })
   }
 
-  const { task_id, task_name, task_description, task_notes, task_plan, task_app_acronym, task_state, task_creator, task_owner, task_createdate } = req.body
+  const { task_name, task_description, task_notes, task_plan, task_app_acronym } = req.body
 
-  // Check if all fields are provided
-  if (!task_name) {
-    return next(new ErrorHandler("Task name is not provided", 400))
+  // Check if task_name is provided
+  if (!task_name || !task_app_acronym) {
+    return next(new ErrorHandler("Task name or app acronym is not provided", 400))
   }
 
+  // Default values
+  let task_state = "open"
+  let task_creator = username
+  let task_owner = username
+  let task_createdate = new Date().toISOString().split("T")[0] // Only the date part
+
   try {
-    const query = "INSERT INTO task (task_id, task_name, task_description, task_notes, task_plan, task_app_acronym, task_state, task_creator, task_owner, task_createdate) VALUES (?,?,?,?,?,?,?,?,?,?)"
+    // Start a transaction
+    await pool.query("START TRANSACTION")
 
-    await pool.execute(query, [task_id, task_name, task_description, task_notes, task_plan, task_app_acronym, task_state, task_creator, task_owner, task_createdate])
+    // 1. Fetch the current running number from the application table
+    const [rows] = await pool.execute("SELECT app_rnumber FROM application WHERE app_acronym = ?", [task_app_acronym])
 
-    // Send success response
+    if (rows.length === 0) {
+      return next(new ErrorHandler("Application acronym not found", 404))
+    }
+
+    let current_running_number = rows[0].app_rnumber
+
+    // 2. Increment the running number
+    current_running_number += 1
+
+    // 3. Update the application table with the new running number
+    await pool.execute("UPDATE application SET app_rnumber = ? WHERE app_acronym = ?", [current_running_number, task_app_acronym])
+
+    // 4. Generate the task_id in the format '[app_acronym]_[running number]'
+    const task_id = `${task_app_acronym}_${current_running_number}`
+
+    // 5. Insert the new task into the task table
+    const insertQuery = `
+      INSERT INTO task (
+        task_id, task_name, task_description, task_notes, task_plan, 
+        task_app_acronym, task_state, task_creator, task_owner, task_createdate
+      ) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `
+
+    await pool.execute(insertQuery, [task_id, task_name, task_description || null, task_notes || null, task_plan || null, task_app_acronym, task_state, task_creator, task_owner, task_createdate])
+
+    // 6. Commit the transaction
+    await pool.query("COMMIT")
+
+    // Return success response
     return res.status(201).json({
       success: true,
       message: "Task created",
@@ -110,8 +131,10 @@ exports.createTask = async (req, res, next) => {
         task_createdate: task_createdate
       }
     })
-  } catch (err) {
-    console.error("Error while creating task:", err)
+  } catch (error) {
+    // Rollback transaction in case of error
+    await pool.query("ROLLBACK")
+    console.error("Error while creating task:", error)
     return next(new ErrorHandler("Error while creating task", 500))
   }
 }
@@ -119,21 +142,47 @@ exports.createTask = async (req, res, next) => {
 //update notes within the task
 exports.updateNotes = async (req, res, next) => {
   const { task_id, task_notes } = req.body
+  const username = req.user.username
+  let task_state
 
   try {
-    const query = "UPDATE task SET task_notes = ? WHERE task_id = ?"
+    // Start a transaction
+    await pool.query("START TRANSACTION")
 
-    await pool.execute(query, [task_notes, task_id])
+    // Fetch existing task notes, current task state from task
+    const [taskRow] = await pool.execute("SELECT task_notes, task_state FROM task WHERE task_id = ?", [task_id])
+    if (taskRow.length === 0) {
+      return res.status(404).json({ message: "Task not found" })
+    }
 
+    const currentNotes = taskRow[0].task_notes || ""
+    task_state = taskRow[0].task_state
+
+    // Format new note with metadata (username, task_state, date&timestamp)
+    const newNoteEntry = `\n[${new Date().toISOString()}] (${username} - ${task_state}): ${task_notes}`
+
+    // Append new note to the existing notes
+    const updatedNotes = currentNotes + newNoteEntry
+
+    // Update task_notes field in the task table
+    const updateQuery = "UPDATE task SET task_notes = ? WHERE task_id = ?"
+    await pool.execute(updateQuery, [updatedNotes, task_id])
+
+    // Commit the transaction
+    await pool.query("COMMIT")
+
+    // Return a success response
     return res.status(200).json({
       success: true,
       message: "Task notes updated successfully",
       data: {
         task_id: task_id,
-        task_notes: task_notes
+        task_notes: updatedNotes // Return the updated notes
       }
     })
   } catch (error) {
+    // Rollback transaction in case of error
+    await pool.query("ROLLBACK")
     console.error("Error while updating task notes:", error)
     return next(new ErrorHandler("Error while updating task notes", 500))
   }
@@ -159,6 +208,98 @@ exports.updateTaskPlan = async (req, res, next) => {
   } catch (error) {
     console.error("Error while updating task plan:", error)
     return next(new ErrorHandler("Error while updating task plan", 500))
+  }
+}
+
+exports.promoteTask = async (req, res, next) => {
+  const { task_id } = req.body
+
+  try {
+    // Start a transaction
+    await pool.query("START TRANSACTION")
+
+    const [rows] = await pool.execute("SELECT task_state FROM task WHERE task_id = ?", [task_id])
+    const currentState = rows[0]?.task_state
+
+    let newState
+    switch (currentState) {
+      case "open":
+        newState = "todo"
+        break
+      case "todo":
+        newState = "doing"
+        break
+      case "doing":
+        newState = "done"
+        break
+      case "done":
+        newState = "close"
+        break
+      default:
+        return res.status(400).json({ success: false, message: "Cannot promote from this state" })
+    }
+
+    await pool.execute("UPDATE task SET task_state = ? WHERE task_id = ?", [newState, task_id])
+
+    // Commit the transaction
+    await pool.query("COMMIT")
+
+    return res.status(200).json({
+      success: true,
+      message: "Task promoted successfully",
+      newState
+    })
+  } catch (error) {
+    // Rollback transaction in case of error
+    await pool.query("ROLLBACK")
+    console.error("Error while promoting task:", error)
+    return next(new ErrorHandler("Error while promoting task", 500))
+  }
+}
+
+exports.demoteTask = async (req, res, next) => {
+  const { task_id } = req.body
+
+  try {
+    // Start a transaction
+    await pool.query("START TRANSACTION")
+
+    const [rows] = await pool.execute("SELECT task_state FROM task WHERE task_id = ?", [task_id])
+    const currentState = rows[0]?.task_state
+
+    let newState
+    switch (currentState) {
+      case "todo":
+        newState = "open"
+        break
+      case "doing":
+        newState = "todo"
+        break
+      case "done":
+        newState = "doing"
+        break
+      case "close":
+        newState = "done"
+        break
+      default:
+        return res.status(400).json({ success: false, message: "Cannot demote from this state" })
+    }
+
+    await pool.execute("UPDATE task SET task_state = ? WHERE task_id = ?", [newState, task_id])
+
+    // Commit the transaction
+    await pool.query("COMMIT")
+
+    return res.status(200).json({
+      success: true,
+      message: "Task demoted successfully",
+      newState
+    })
+  } catch (error) {
+    // Rollback transaction in case of error
+    await pool.query("ROLLBACK")
+    console.error("Error while demoting task:", error)
+    return next(new ErrorHandler("Error while demoting task", 500))
   }
 }
 
