@@ -12,7 +12,7 @@
   let showTaskModal = false; // modal for create task
   let showPlanModal = false; // modal for create plan
   let editPlanModal = false; // modal for edit plan
-  let user = { user_name: '', email: '', active: 1, isAdmin: false, isPL: false, isPM: false };
+  let user = { user_name: '', email: '', active: 1, isAdmin: false, isPL: false, isPM: false, isDev: false };
   let currentAppAcronym = '';
   let fetchedTasks = [];
   let taskDetails = [];
@@ -49,6 +49,7 @@
       user.isAdmin = response.data.user.isAdmin;
 			user.isPL = response.data.user.isPL;
       user.isPM = response.data.user.isPM;
+      user.isDev = response.data.user.isDev;
     } catch (error) {
       if (error.response.data.errMessage == "User is not found or disabled") {
         goto('/');
@@ -193,7 +194,8 @@
     try {
       await axios.patch('/api/v1/demoteTask', { task_id: taskDetails.task_id }, { withCredentials: true });
       successMessage = 'Task Demoted';
-      await fetchTaskDetails();
+      await fetchAllTaskByApp();
+      await fetchTaskDetails(taskDetails.task_id);
     } catch (error) {
       console.error(error);
       errorMessage = 'Failed to demote task';
@@ -215,6 +217,8 @@
     try {
       const response = await axios.patch('/api/v1/promoteTask', { task_id: taskDetails.task_id }, { withCredentials: true });
       successMessage = 'Task Promoted';
+      await fetchAllTaskByApp();
+      await fetchTaskDetails(taskDetails.task_id);
     } catch (error) {
       console.error(error);
       errorMessage = 'Failed to promote task';
@@ -234,6 +238,7 @@
       showTaskModal = true;
       newTask = {};
       await fetchAllTaskByApp();
+      await fetchTaskDetails(taskDetails.task_id);
     } catch (error) {
       console.error(error);
       errorMessage = 'Failed to create task';
@@ -344,7 +349,7 @@
         <p>{task.task_description}</p>
         <div class="task-footer">
           <span>{task.task_owner}</span>
-          <button class="view-button" on:click={() => (showModal = true)}>View</button>
+          <button class="view-button" on:click={() => fetchTaskDetails(task.task_id)}>View</button>
         </div>
       </div>
     {/each}
@@ -359,7 +364,7 @@
         <p>{task.task_description}</p>
         <div class="task-footer">
           <span>{task.task_owner}</span>
-          <button class="view-button" on:click={() => (showModal = true)}>View</button>
+          <button class="view-button" on:click={() => fetchTaskDetails(task.task_id)}>View</button>
         </div>
       </div>
     {/each}
@@ -374,7 +379,7 @@
         <p>{task.task_description}</p>
         <div class="task-footer">
           <span>{task.task_owner}</span>
-          <button class="view-button" on:click={() => (showModal = true)}>View</button>
+          <button class="view-button" on:click={() => fetchTaskDetails(task.task_id)}>View</button>
         </div>
       </div>
     {/each}
@@ -389,7 +394,7 @@
         <p>{task.task_description}</p>
         <div class="task-footer">
           <span>{task.task_owner}</span>
-          <button class="view-button" on:click={() => (showModal = true)}>View</button>
+          <button class="view-button" on:click={() => fetchTaskDetails(task.task_id)}>View</button>
         </div>
       </div>
     {/each}
@@ -418,7 +423,7 @@
         <p><strong>Description:</strong> {taskDetails.task_description}</p>
         <p><strong>State:</strong> {taskDetails.task_state}</p>
         <label for="new-plan"><strong>Plan:</strong> </label>
-        <select bind:value={taskDetails.task_plan} style="width: 60%;">
+        <select bind:value={taskDetails.task_plan} style="width: 60%;" disabled={!user.isPM && !user.isPL}>
           {#each planNames as plan}
             <option value={plan.plan_mvp_name}>{plan.plan_mvp_name}</option>
           {/each}
@@ -442,7 +447,7 @@
 
     <div class="modal-footer">
       <button class="button" on:click={handleSave}>Save</button>
-      <button class="button" on:click={handleDemote}>Demote</button>
+      <button class="button" on:click={handleDemote} disabled={taskDetails.task_state === 'open'}>Demote</button>
       <button class="button" on:click={handlePromote}>Promote</button>
     </div>
   </form>

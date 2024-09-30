@@ -1,5 +1,6 @@
 const pool = require("../config/db_connection")
 const ErrorHandler = require("../utils/errorHandler")
+const { sendEmail } = require("../config/mailer")
 
 // get all task by app
 exports.getAllTaskByApp = async (req, res, next) => {
@@ -159,10 +160,10 @@ exports.updateNotes = async (req, res, next) => {
     task_state = taskRow[0].task_state
 
     // Format new note with metadata (username, task_state, date&timestamp)
-    const newNoteEntry = `\n[${new Date().toISOString()}] (${username} - ${task_state}): ${task_notes}`
+    const newNoteEntry = `\n[${new Date().toLocaleString("en-US")}] (${username} - ${task_state}): ${task_notes}`
 
-    // Append new note to the existing notes
-    const updatedNotes = currentNotes + newNoteEntry
+    // Prepend new note to the existing notes
+    const updatedNotes = newNoteEntry + currentNotes
 
     // Update task_notes field in the task table
     const updateQuery = "UPDATE task SET task_notes = ? WHERE task_id = ?"
@@ -188,8 +189,18 @@ exports.updateNotes = async (req, res, next) => {
   }
 }
 
-// update plan within the task
+// update plan within the task (only PL and PM)
 exports.updateTaskPlan = async (req, res, next) => {
+  let username = req.user.username
+  let is_PL = await checkGroup(username, "pl")
+  let is_PM = await checkGroup(username, "pm")
+
+  if (!is_PM && !is_PL) {
+    return res.status(500).json({
+      message: "Do not have permission to access this resource"
+    })
+  }
+
   const { task_id, task_plan } = req.body
 
   try {
@@ -212,14 +223,17 @@ exports.updateTaskPlan = async (req, res, next) => {
 }
 
 exports.promoteTask = async (req, res, next) => {
+  let username = req.user.username
   const { task_id } = req.body
 
   try {
     // Start a transaction
     await pool.query("START TRANSACTION")
 
-    const [rows] = await pool.execute("SELECT task_state FROM task WHERE task_id = ?", [task_id])
+    const [rows] = await pool.execute("SELECT task_state, task_owner, task_creator FROM task WHERE task_id = ?", [task_id])
     const currentState = rows[0]?.task_state
+    const taskOwner = rows[0]?.task_owner
+    const taskCreator = rows[0]?.task_creator
 
     let newState
     switch (currentState) {
@@ -239,7 +253,22 @@ exports.promoteTask = async (req, res, next) => {
         return res.status(400).json({ success: false, message: "Cannot promote from this state" })
     }
 
-    await pool.execute("UPDATE task SET task_state = ? WHERE task_id = ?", [newState, task_id])
+    await pool.execute("UPDATE task SET task_state = ?, task_owner = ? WHERE task_id = ?", [newState, username, task_id])
+
+    // If the new state is 'done', send email to pl
+    if (newState === "done") {
+      // Fetch the email of the task creator
+      const [userRows] = await pool.execute("SELECT email FROM user WHERE user_name = ?", [taskCreator])
+      const plEmail = userRows[0]?.email // pl email address
+      const subject = `Task ${task_id} Promoted to Done`
+      const message = `The task with ID ${task_id} has been promoted to Done by ${taskOwner}.`
+
+      try {
+        await sendEmail(plEmail, subject, message)
+      } catch (emailError) {
+        console.error("Error sending email:", emailError)
+      }
+    }
 
     // Commit the transaction
     await pool.query("COMMIT")

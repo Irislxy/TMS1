@@ -3,16 +3,6 @@ const ErrorHandler = require("../utils/errorHandler")
 
 // get all plan name for dropdown(pl & pm)
 exports.getAllPlan = async (req, res, next) => {
-  let username = req.user.username
-  let is_PL = await checkGroup(username, "pl")
-  let is_PM = await checkGroup(username, "pm")
-
-  if (!is_PM && !is_PL) {
-    return res.status(500).json({
-      message: "Do not have permission to access this resource"
-    })
-  }
-
   try {
     const query = "SELECT plan_mvp_name FROM plan"
 
