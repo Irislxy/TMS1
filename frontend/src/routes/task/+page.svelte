@@ -53,7 +53,6 @@
     done: 'Reject'
   };
 
-  // Fetch task details when component mounts
   onMount(async () => {
     await checkStatus();
     await fetchAllTaskByApp();
@@ -303,10 +302,14 @@
     newPlan.plan_app_acronym = currentAppAcronym;
 
     // Check if all required fields are provided
-		if (!newPlan.plan_mvp_name || !newPlan.plan_startdate || !newPlan.plan_enddate || !newPlan.plan_colour) {
+		if (!newPlan.plan_mvp_name || !newPlan.plan_startdate || !newPlan.plan_enddate) {
 			errorMessage = 'All fields are required';
 			return;
   	}
+
+    if (!newPlan.plan_colour) {
+      newPlan.plan_colour = '#000000';
+    }
 
     // Remove the '#' from the color code before sending it to the database
     newPlan.plan_colour = newPlan.plan_colour.replace('#', '');
@@ -523,29 +526,29 @@
 
     <div class="modal-footer">
       <!-- Save Button -->
-      {#if tasks.open.length > 0}
+      {#if taskDetails.task_state == 'open'}
         <button class="button" on:click={handleSave} disabled={canOpenTask == false}>Save</button>
-      {:else if tasks.todo.length > 0}
+      {:else if taskDetails.task_state == 'todo'}
         <button class="button" on:click={handleSave} disabled={canTodoTask == false}>Save</button>
-      {:else if tasks.doing.length > 0}
+      {:else if taskDetails.task_state == 'doing'}
         <button class="button" on:click={handleSave} disabled={canDoingTask == false}>Save</button>
-      {:else if tasks.done.length > 0}
+      {:else if taskDetails.task_state == 'done'}
         <button class="button" on:click={handleSave} disabled={disableSave || canDoneTask == false}>Save</button>
       {/if}
       <!-- Demote Button -->
-      {#if tasks.doing.length > 0}
+      {#if taskDetails.task_state == 'doing'}
       <button class="button" on:click={handleDemote} disabled={canDoingTask == false}>{demoteButtonLabels.doing}</button>
-      {:else if tasks.done.length > 0}
+      {:else if taskDetails.task_state == 'done'}
       <button class="button" on:click={handleDemote} disabled={canDoneTask == false}>{demoteButtonLabels.done}</button>
       {/if}
       <!-- Promote Button -->
-      {#if tasks.open.length > 0}
+      {#if taskDetails.task_state == 'open'}
         <button class="button" on:click={handlePromote} disabled={canOpenTask == false}>{buttonLabels.open}</button>
-      {:else if tasks.todo.length > 0}
+      {:else if taskDetails.task_state == 'todo'}
         <button class="button" on:click={handlePromote} disabled={canTodoTask == false}>{buttonLabels.todo}</button>
-      {:else if tasks.doing.length > 0}
+      {:else if taskDetails.task_state == 'doing'}
         <button class="button" on:click={handlePromote} disabled={canDoingTask == false}>{buttonLabels.doing}</button>
-      {:else if tasks.done.length > 0}
+      {:else if taskDetails.task_state == 'done'}
         <button class="button" on:click={handlePromote} disabled={disablePromote || canDoneTask == false}>{buttonLabels.done}</button>
       {/if}
     </div>
