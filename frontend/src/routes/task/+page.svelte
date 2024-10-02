@@ -18,6 +18,14 @@
   let taskDetails = [];
   let planNames = [];
   let originalPlan = '';
+  let planChanged = false; // Track if the plan has changed
+  let disableSave = false; // Track if the Save button should be disabled
+  let disablePromote = false; // Track if the Promote button should be disabled
+  let canCreateTask = false;
+  let canOpenTask = false;
+  let canTodoTask = false;
+  let canDoingTask = false;
+  let canDoneTask = false;
   let planDetails = [];
   let newNotes = '';
   let newPlan = { plan_app_acronym: '', plan_mvp_name: '', plan_startdate: '', plan_enddate: '', plan_colour: ''}
@@ -32,12 +40,25 @@
     done: [],
     close: []
   };
+  // Button labels for promoting tasks
+  let buttonLabels = {
+    open: 'Release',
+    todo: 'Take On',
+    doing: 'To Review',
+    done: 'Approve'
+  };
+  // Button labels for demoting tasks
+  let demoteButtonLabels = {
+    doing: 'Give Up',
+    done: 'Reject'
+  };
 
   // Fetch task details when component mounts
   onMount(async () => {
     await checkStatus();
     await fetchAllTaskByApp();
     await fetchPlanNames();
+    await checkTaskPermission();
   });
 
   const checkStatus = async () => {
@@ -57,7 +78,6 @@
       errorMessage = 'Failed to fetch user profile';
     }
   };
-
 
   // fetch all task with task_app_acronym provided
   const fetchAllTaskByApp = async () => {
@@ -91,6 +111,29 @@
     }
   };
 
+  // Fetch task creation permission
+  const checkTaskPermission = async () => {
+    try {
+      const response = await axios.post('/api/v1/checkTaskPermission', { app_acronym: currentAppAcronym }, { withCredentials: true });
+      const { canCreate, canOpen, canTodo, canDoing, canDone } = response.data;
+
+      // Update your state or variables accordingly
+      canCreateTask = canCreate;
+      canOpenTask = canOpen;
+      canTodoTask = canTodo;
+      canDoingTask = canDoing;
+      canDoneTask = canDone;
+
+    } catch (error) {
+      console.error("Failed to check task permission", error);
+      canCreateTask = false;
+      canOpenTask = false;
+      canTodoTask = false;
+      canDoingTask = false;
+      canDoneTask = false;
+    }
+  };
+
   // fetch specific task details with taskId provided
   const fetchTaskDetails = async (taskId) => {
     await checkStatus();
@@ -108,7 +151,7 @@
   // fetch all plan for dropdown
   const fetchPlanNames = async () => {
     try {
-      const response = await axios.get('/api/v1/getAllPlan', { withCredentials: true });
+      const response = await axios.post('/api/v1/getAllPlan', { plan_app_acronym: currentAppAcronym }, { withCredentials: true });
       if (response.status === 200) {
         planNames = response.data.data;
         //console.log(planNames);
@@ -143,16 +186,17 @@
 
       successMessage = 'Task Plan Updated';
     } catch (error) {
-      console.error(error);
-      errorMessage = 'Failed to update task plan';
+      if (error.response && error.response.status === 403) {
+        errorMessage = error.response.data.message || 'Permission denied';
+      } else {
+        errorMessage = 'Failed to update task plan';
+      }
     }
   };
 
   // Function to update task notes within task with taskId provided
   const updateNotes = async (taskId) => {
     await checkStatus();
-    errorMessage = ''; // Reset error message
-		successMessage = ''; // Reset success message
     
     const updateData = { task_id: taskId, task_notes: newNotes };
     try {
@@ -162,8 +206,11 @@
       newNotes = '';
       successMessage = 'Task Notes Updated';
     } catch (error) {
-      console.error(error);
-      errorMessage = 'Failed to update task notes';
+      if (error.response && error.response.status === 403) {
+        errorMessage = error.response.data.message || 'Permission denied';
+      } else {
+        errorMessage = 'Failed to update task notes';
+      }
     }
   };
 
@@ -238,10 +285,13 @@
       showTaskModal = true;
       newTask = {};
       await fetchAllTaskByApp();
-      await fetchTaskDetails(taskDetails.task_id);
     } catch (error) {
       console.error(error);
-      errorMessage = 'Failed to create task';
+      if (error.response && error.response.status === 403) {
+        errorMessage = error.response.data.message || 'Permission denied';
+      } else {
+        errorMessage = 'Failed to create task';
+      }
     }
   };
 
@@ -258,6 +308,9 @@
 			return;
   	}
 
+    // Remove the '#' from the color code before sending it to the database
+    newPlan.plan_colour = newPlan.plan_colour.replace('#', '');
+
     try {
       await axios.post('/api/v1/createPlan', newPlan, { withCredentials: true });
 
@@ -267,10 +320,35 @@
       await fetchPlanNames();
       showPlanModal = true;
     } catch (error) {
-      console.error(error);
-      errorMessage = 'Failed to create plan';
+      if (error.response && error.response.status === 409) {
+          // Catch duplicate entry error
+          errorMessage = error.response.data.message || 'Plan already exists';
+      } else {
+          // Catch any other errors
+          errorMessage = 'Failed to create plan';
+      }
     }
   };
+
+  // Call this when a plan is selected in the done state
+  const handlePlanChange = () => {
+    if (taskDetails.task_state === 'done') {
+      planChanged = true;
+    }
+  };
+
+  // Reset button states when modal is closed or opened
+  $: if (!showModal) {
+    // Reset when modal is closed
+    planChanged = false;
+    disableSave = false;
+    disablePromote = false;
+  }
+
+  $: {
+    disableSave = planChanged && taskDetails.task_state === 'done';
+    disablePromote = planChanged && taskDetails.task_state === 'done';
+  }
 
   // Call this when a plan is selected
   const onPlanSelected = async (planName) => {
@@ -305,11 +383,11 @@
 </script>
 
 <div class="header-buttons">
-  {#if user.isPL}
+  {#if canCreateTask}
     <button class="create-task-button" on:click={() => (showTaskModal = true)}>Create Task</button>
   {/if}
 
-  {#if user.isPL || user.isPM}
+  {#if user.isPM}
     <div class="dropdown">
       <button class="plan-button">Plan</button>
       <div class="dropdown-content">
@@ -329,7 +407,7 @@
   <div class="kanban-column">
     <div class="column-header">Open</div>
     {#each tasks.open as task}
-      <div class="task-card" style="border-left: 4px solid {task.plan_colour ? task.plan_colour : 'black'};">
+      <div class="task-card" style="border-left: 4px solid {`#${task.plan_colour ? task.plan_colour : '000000'}`};">
         <h3>{task.task_name}</h3>
         <p>{task.task_description}</p>
         <div class="task-footer">
@@ -344,7 +422,7 @@
   <div class="kanban-column">
     <div class="column-header">Todo</div>
     {#each tasks.todo as task}
-      <div class="task-card" style="border-left: 4px solid {task.plan_colour ? task.plan_colour : 'black'};">
+      <div class="task-card" style="border-left: 4px solid {`#${task.plan_colour ? task.plan_colour : '000000'}`};">
         <h3>{task.task_name}</h3>
         <p>{task.task_description}</p>
         <div class="task-footer">
@@ -359,7 +437,7 @@
   <div class="kanban-column">
     <div class="column-header">Doing</div>
     {#each tasks.doing as task}
-      <div class="task-card" style="border-left: 4px solid {task.plan_colour ? task.plan_colour : 'black'};">
+      <div class="task-card" style="border-left: 4px solid {`#${task.plan_colour ? task.plan_colour : '000000'}`};">
         <h3>{task.task_name}</h3>
         <p>{task.task_description}</p>
         <div class="task-footer">
@@ -374,7 +452,7 @@
   <div class="kanban-column">
     <div class="column-header">Done</div>
     {#each tasks.done as task}
-      <div class="task-card" style="border-left: 4px solid {task.plan_colour ? task.plan_colour : 'black'};">
+      <div class="task-card" style="border-left: 4px solid {`#${task.plan_colour ? task.plan_colour : '000000'}`};">
         <h3>{task.task_name}</h3>
         <p>{task.task_description}</p>
         <div class="task-footer">
@@ -389,7 +467,7 @@
   <div class="kanban-column">
     <div class="column-header">Close</div>
     {#each tasks.close as task}
-      <div class="task-card" style="border-left: 4px solid {task.plan_colour ? task.plan_colour : 'black'};">
+      <div class="task-card" style="border-left: 4px solid {`#${task.plan_colour ? task.plan_colour : '000000'}`};">
         <h3>{task.task_name}</h3>
         <p>{task.task_description}</p>
         <div class="task-footer">
@@ -402,9 +480,7 @@
 </div>
 
 <Modal bind:showModal>
-  <h2 slot="header">
-		Task Details
-	</h2>
+  <h2 slot="header">Task Details</h2>
 
   {#if errorMessage}
     <p style="color: red;">{errorMessage}</p>
@@ -423,7 +499,7 @@
         <p><strong>Description:</strong> {taskDetails.task_description}</p>
         <p><strong>State:</strong> {taskDetails.task_state}</p>
         <label for="new-plan"><strong>Plan:</strong> </label>
-        <select bind:value={taskDetails.task_plan} style="width: 60%;" disabled={!user.isPM && !user.isPL}>
+        <select bind:value={taskDetails.task_plan} style="width: 60%;" disabled={taskDetails.task_state === 'todo' || taskDetails.task_state === 'doing' || taskDetails.task_state === 'close'} on:change={handlePlanChange}>
           {#each planNames as plan}
             <option value={plan.plan_mvp_name}>{plan.plan_mvp_name}</option>
           {/each}
@@ -437,18 +513,41 @@
       <div class="modal-right">
         <div class="notes-area">
           <label for="notes"><strong>Notes:</strong></label>
-          <textarea id="notes" disabled>{taskDetails.task_notes}</textarea>
+          <textarea id="notes" style="height: 100px;" disabled>{taskDetails.task_notes}</textarea>
         </div>
         <div class="notes-area">
-          <textarea id="userNotes" bind:value={newNotes} placeholder="Enter notes here..."></textarea>
+          <textarea id="userNotes" bind:value={newNotes} style="height: 100px;" disabled={taskDetails.task_state === 'close'} placeholder="Enter notes here..."></textarea>
         </div>
       </div>
     </div>
 
     <div class="modal-footer">
-      <button class="button" on:click={handleSave}>Save</button>
-      <button class="button" on:click={handleDemote} disabled={taskDetails.task_state === 'open'}>Demote</button>
-      <button class="button" on:click={handlePromote}>Promote</button>
+      <!-- Save Button -->
+      {#if tasks.open.length > 0}
+        <button class="button" on:click={handleSave} disabled={canOpenTask == false}>Save</button>
+      {:else if tasks.todo.length > 0}
+        <button class="button" on:click={handleSave} disabled={canTodoTask == false}>Save</button>
+      {:else if tasks.doing.length > 0}
+        <button class="button" on:click={handleSave} disabled={canDoingTask == false}>Save</button>
+      {:else if tasks.done.length > 0}
+        <button class="button" on:click={handleSave} disabled={disableSave || canDoneTask == false}>Save</button>
+      {/if}
+      <!-- Demote Button -->
+      {#if tasks.doing.length > 0}
+      <button class="button" on:click={handleDemote} disabled={canDoingTask == false}>{demoteButtonLabels.doing}</button>
+      {:else if tasks.done.length > 0}
+      <button class="button" on:click={handleDemote} disabled={canDoneTask == false}>{demoteButtonLabels.done}</button>
+      {/if}
+      <!-- Promote Button -->
+      {#if tasks.open.length > 0}
+        <button class="button" on:click={handlePromote} disabled={canOpenTask == false}>{buttonLabels.open}</button>
+      {:else if tasks.todo.length > 0}
+        <button class="button" on:click={handlePromote} disabled={canTodoTask == false}>{buttonLabels.todo}</button>
+      {:else if tasks.doing.length > 0}
+        <button class="button" on:click={handlePromote} disabled={canDoingTask == false}>{buttonLabels.doing}</button>
+      {:else if tasks.done.length > 0}
+        <button class="button" on:click={handlePromote} disabled={disablePromote || canDoneTask == false}>{buttonLabels.done}</button>
+      {/if}
     </div>
   </form>
 </Modal>
@@ -472,7 +571,7 @@
 
     <div class="form-group">
       <label for="task_description">Description: </label>
-      <textarea id="task_description" bind:value={newTask.task_description}></textarea>
+      <textarea id="task_description" bind:value={newTask.task_description} style="height: 60px;"></textarea>
     </div>
 
     <div class="form-group">
@@ -486,7 +585,7 @@
 
     <div class="form-group">
       <label for="task_notes">Notes: </label>
-      <textarea id="task_notes" bind:value={newTask.task_notes}></textarea>
+      <textarea id="task_notes" bind:value={newTask.task_notes} style="height: 60px;"></textarea>
     </div>
 
     <div class="modal-footer">
@@ -526,13 +625,9 @@
       </div>
     </div>
 
-    <div class="form-group">
+    <div class="form-group" style="width: 100px;">
       <label for="plan_colour">Colour: </label>
-      <select bind:value={newPlan.plan_colour} style="width: 82.7%;">
-        <option value="red">Red</option>
-        <option value="green">Green</option>
-        <option value="orange">Orange</option>
-      </select>
+      <input type="color" id="plan_colour" bind:value={newPlan.plan_colour} required />
     </div>
 
     <div class="modal-footer">
@@ -742,7 +837,6 @@
     width: 100%;
     height: 150px;
     padding: 10px;
-    margin-top: 10px;
     font-family: inherit;
     font-size: inherit;
     resize: none;
@@ -751,7 +845,6 @@
   }
 
   .notes-area {
-    height: 200px;
     margin-top: 10px;
   }
 

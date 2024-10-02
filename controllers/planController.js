@@ -1,12 +1,14 @@
 const pool = require("../config/db_connection")
 const ErrorHandler = require("../utils/errorHandler")
 
-// get all plan name for dropdown(pl & pm)
+// get all plan name for dropdown
 exports.getAllPlan = async (req, res, next) => {
-  try {
-    const query = "SELECT plan_mvp_name FROM plan"
+  const { plan_app_acronym } = req.body
 
-    const [results] = await pool.query(query)
+  try {
+    const query = "SELECT plan_mvp_name FROM plan WHERE plan_app_acronym = ?" //should only display plan for respective app
+
+    const [results] = await pool.query(query, [plan_app_acronym])
 
     return res.status(200).json({
       success: true,
@@ -68,6 +70,14 @@ exports.createPlan = async (req, res, next) => {
   // Check if all fields are provided
   if (!plan_mvp_name || !plan_startdate || !plan_enddate || !plan_colour) {
     return next(new ErrorHandler("All fields are required", 400))
+  }
+
+  // Check for existing plan under the same app
+  const checkQuery = "SELECT COUNT(*) as count FROM plan WHERE plan_mvp_name = ? AND plan_app_acronym = ?"
+  const [rows] = await pool.execute(checkQuery, [plan_mvp_name, plan_app_acronym])
+
+  if (rows[0].count > 0) {
+    return next(new ErrorHandler("A plan with this name already exists under the specified application", 409))
   }
 
   try {

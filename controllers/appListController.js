@@ -61,7 +61,7 @@ exports.createApp = async (req, res, next) => {
     })
   }
 
-  const { app_acronym, app_description, app_rnumber, app_startdate, app_enddate, app_permit_create, app_permit_open, app_permit_todolist, app_permit_doing, app_permit_done } = req.body
+  const { app_acronym, app_description, app_rnumber, app_startdate, app_enddate, app_permit_create, app_permit_open, app_permit_todo, app_permit_doing, app_permit_done } = req.body
 
   // Checking if all required fields are provided
   if (!app_acronym || !app_rnumber || !app_startdate || !app_enddate) {
@@ -69,9 +69,9 @@ exports.createApp = async (req, res, next) => {
   }
 
   try {
-    const query = "INSERT INTO application (app_acronym, app_description, app_rnumber, app_startdate, app_enddate, app_permit_create, app_permit_open, app_permit_todolist, app_permit_doing, app_permit_done) VALUES (?,?,?,?,?,?,?,?,?,?)"
+    const query = "INSERT INTO application (app_acronym, app_description, app_rnumber, app_startdate, app_enddate, app_permit_create, app_permit_open, app_permit_todo, app_permit_doing, app_permit_done) VALUES (?,?,?,?,?,?,?,?,?,?)"
 
-    await pool.execute(query, [app_acronym, app_description || null, app_rnumber, app_startdate, app_enddate, app_permit_create || null, app_permit_open || null, app_permit_todolist || null, app_permit_doing || null, app_permit_done || null])
+    await pool.execute(query, [app_acronym, app_description || null, app_rnumber, app_startdate, app_enddate, app_permit_create || null, app_permit_open || null, app_permit_todo || null, app_permit_doing || null, app_permit_done || null])
 
     return res.status(201).json({
       success: true,
@@ -84,7 +84,7 @@ exports.createApp = async (req, res, next) => {
         app_enddate: app_enddate,
         app_permit_create: app_permit_create,
         app_permit_open: app_permit_open,
-        app_permit_todolist: app_permit_todolist,
+        app_permit_todo: app_permit_todo,
         app_permit_doing: app_permit_doing,
         app_permit_done: app_permit_done
       }
@@ -113,7 +113,7 @@ exports.updateApp = async (req, res, next) => {
     })
   }
 
-  const { app_description, app_permit_create, app_permit_open, app_permit_todolist, app_permit_doing, app_permit_done, app_acronym } = req.body
+  const { app_description, app_permit_create, app_permit_open, app_permit_todo, app_permit_doing, app_permit_done, app_acronym } = req.body
 
   try {
     // Fetch the current app data
@@ -127,7 +127,7 @@ exports.updateApp = async (req, res, next) => {
     }
 
     // Compare each field with the current data to check if any changes were made
-    let noChanges = (app_description === "" || currentAppData.app_description === app_description) && (app_permit_create === "" || currentAppData.app_permit_create === app_permit_create) && (app_permit_open === "" || currentAppData.app_permit_open === app_permit_open) && (app_permit_todolist === "" || currentAppData.app_permit_todolist === app_permit_todolist) && (app_permit_doing === "" || currentAppData.app_permit_doing === app_permit_doing) && (app_permit_done === "" || currentAppData.app_permit_done === app_permit_done)
+    let noChanges = (app_description === "" || currentAppData.app_description === app_description) && (app_permit_create === "" || currentAppData.app_permit_create === app_permit_create) && (app_permit_open === "" || currentAppData.app_permit_open === app_permit_open) && (app_permit_todo === "" || currentAppData.app_permit_todo === app_permit_todo) && (app_permit_doing === "" || currentAppData.app_permit_doing === app_permit_doing) && (app_permit_done === "" || currentAppData.app_permit_done === app_permit_done)
 
     if (noChanges) {
       return res.status(200).json({
@@ -136,9 +136,9 @@ exports.updateApp = async (req, res, next) => {
       })
     }
 
-    const query = "UPDATE application SET app_description = ?, app_permit_create = ?, app_permit_open = ?, app_permit_todolist = ?, app_permit_doing = ?,app_permit_done = ? WHERE app_acronym = ?"
+    const query = "UPDATE application SET app_description = ?, app_permit_create = ?, app_permit_open = ?, app_permit_todo = ?, app_permit_doing = ?,app_permit_done = ? WHERE app_acronym = ?"
 
-    await pool.execute(query, [app_description || null, app_permit_create || null, app_permit_open || null, app_permit_todolist || null, app_permit_doing || null, app_permit_done || null, app_acronym])
+    await pool.execute(query, [app_description || null, app_permit_create || null, app_permit_open || null, app_permit_todo || null, app_permit_doing || null, app_permit_done || null, app_acronym])
 
     return res.status(201).json({
       success: true,
@@ -148,7 +148,7 @@ exports.updateApp = async (req, res, next) => {
         app_description: app_description,
         app_permit_create: app_permit_create,
         app_permit_open: app_permit_open,
-        app_permit_todolist: app_permit_todolist,
+        app_permit_todo: app_permit_todo,
         app_permit_doing: app_permit_doing,
         app_permit_done: app_permit_done
       }

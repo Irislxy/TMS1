@@ -7,6 +7,7 @@ const taskController = require("../controllers/taskController")
 
 router.post("/getAllTaskByApp", isAuthenticated, taskController.getAllTaskByApp)
 router.post("/getTaskDetails", isAuthenticated, taskController.getTaskDetails)
+router.post("/checkTaskPermission", isAuthenticated, taskController.checkTaskPermission)
 router.post("/createTask", isAuthenticated, taskController.createTask)
 router.put("/updateNotes", isAuthenticated, taskController.updateNotes)
 router.put("/updateTaskPlan", isAuthenticated, taskController.updateTaskPlan)

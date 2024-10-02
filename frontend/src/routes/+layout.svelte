@@ -1,8 +1,16 @@
 <script>
   import Navbar from '$lib/components/Navbar.svelte';
   import { page } from '$app/stores';
+  import { app_name } from '$lib/stores.js';
   let pageTitle = '';
   let user = { user_name: '', email: '' };
+  let currentAppAcronym;
+
+  $: {
+    app_name.subscribe(value => {
+        currentAppAcronym = value;
+      });
+  };
 
   // Update the title based on the current route
   $: {
@@ -13,7 +21,7 @@
     } else if ($page.url.pathname === '/userProfile') {
       pageTitle = 'User Profile';
     } else if ($page.url.pathname === '/task') {
-      pageTitle = 'Kanban';
+      pageTitle = `Kanban (${currentAppAcronym})`;
     } else {
         pageTitle = 'App List';
     }

@@ -11,8 +11,8 @@
 	let appDetails = [];
 	let showModal = false; // modal for create app
 	let showAppModal = false; // modal for edit app
-	let newApp = { app_acronym: '', app_description: '', app_rnumber: '', app_startdate: '', app_enddate: '', app_permit_create: '', app_permit_open: '', app_permit_todolist: '', app_permit_doing: '', app_permit_done: '' };
-	let editApp = { app_acronym: '', app_description: '', app_permit_create: '', app_permit_open: '', app_permit_todolist: '', app_permit_doing: '', app_permit_done: '' };
+	let newApp = { app_acronym: '', app_description: '', app_rnumber: '', app_startdate: '', app_enddate: '', app_permit_create: '', app_permit_open: '', app_permit_todo: '', app_permit_doing: '', app_permit_done: '' };
+	let editApp = { app_acronym: '', app_description: '', app_permit_create: '', app_permit_open: '', app_permit_todo: '', app_permit_doing: '', app_permit_done: '' };
 	let errorMessage = '';
 	let successMessage = '';
 
@@ -98,7 +98,7 @@
 					app_enddate: newApp.app_enddate,
 					app_permit_create: newApp.app_permit_create,
 					app_permit_open: newApp.app_permit_open,
-					app_permit_todolist: newApp.app_permit_todolist,
+					app_permit_todo: newApp.app_permit_todo,
 					app_permit_doing: newApp.app_permit_doing,
 					app_permit_done: newApp.app_permit_done
 				});
@@ -132,19 +132,7 @@
 			}
 			
 			successMessage = 'App Updated';
-			apps.push({ 
-				app_acronym: editApp.app_acronym,
-				app_description: editApp.app_description,
-				app_rnumber: appDetails.app_rnumber, // cannot change aft creation
-				app_startdate: appDetails.app_startdate, // cannot change aft creation
-				app_enddate: appDetails.app_enddate, // cannot change aft creation
-				app_permit_create: editApp.app_permit_create,
-				app_permit_open: editApp.app_permit_open,
-				app_permit_todolist: editApp.app_permit_todolist,
-				app_permit_doing: editApp.app_permit_doing,
-				app_permit_done: editApp.app_permit_done
-			});
-			apps = apps;
+			await fetchAllApp(); 
 		} catch (error) {
 			console.error("Error updating app:", error);
 			errorMessage = 'Error updating app';
@@ -167,7 +155,7 @@
 			app_description: appDetails.app_description,
 			app_permit_create: appDetails.app_permit_create,
 			app_permit_open: appDetails.app_permit_open,
-			app_permit_todolist: appDetails.app_permit_todolist,
+			app_permit_todo: appDetails.app_permit_todo,
 			app_permit_doing: appDetails.app_permit_doing,
 			app_permit_done: appDetails.app_permit_done,
     };
@@ -208,7 +196,7 @@
 </div>
 
 <Modal bind:showModal>
-	<h3 slot="header">Create App</h3>
+	<h3 slot="header" style="margin-top: 10px; margin-bottom: 10px;">Create App</h3>
 
 	<form on:submit={handleCreateApp} class="create-app-form">
 		<!-- App Acronym Field -->
@@ -243,7 +231,7 @@
 			</div>
 		</div>
 
-		<h4>Permit Group</h4>
+		<h4 style="margin-top: 5px; margin-bottom: 5px;">Permit Group</h4>
 
 		<div class="modal-content">
 			<div class="modal-left">
@@ -251,9 +239,9 @@
 				<div class="form-group">
 					<label for="app_permit_create">Create: </label>
 					<select id="app_permit_create" bind:value={newApp.app_permit_create}>
-						<option value="Project Lead">Project Lead</option>
-						<option value="Project Manager">Project Manager</option>
-						<option value="Developer">Developer</option>
+						<option value="pl_1">Project Lead</option>
+						<option value="pm_1">Project Manager</option>
+						<option value="dev_1">Developer</option>
 					</select>
 				</div>
 
@@ -261,19 +249,19 @@
 				<div class="form-group">
 					<label for="app_permit_open">Open: </label>
 					<select id="app_permit_open" bind:value={newApp.app_permit_open}>
-						<option value="Project Lead">Project Lead</option>
-						<option value="Project Manager">Project Manager</option>
-						<option value="Developer">Developer</option>
+						<option value="pl_1">Project Lead</option>
+						<option value="pm_1">Project Manager</option>
+						<option value="dev_1">Developer</option>
 					</select>
 				</div>
 
 				<!-- App Permit To-Do List Field -->
 				<div class="form-group">
-					<label for="app_permit_todolist">To-Do List: </label>
-					<select id="app_permit_todolist" bind:value={newApp.app_permit_todolist}>
-						<option value="Project Lead">Project Lead</option>
-						<option value="Project Manager">Project Manager</option>
-						<option value="Developer">Developer</option>
+					<label for="app_permit_todo">To-Do List: </label>
+					<select id="app_permit_todo" bind:value={newApp.app_permit_todo}>
+						<option value="pl_1">Project Lead</option>
+						<option value="pm_1">Project Manager</option>
+						<option value="dev_1">Developer</option>
 					</select>
 				</div>
 			</div>
@@ -283,9 +271,9 @@
 				<div class="form-group">
 					<label for="app_permit_doing">Doing: </label>
 					<select id="app_permit_doing" bind:value={newApp.app_permit_doing}>
-						<option value="Project Lead">Project Lead</option>
-						<option value="Project Manager">Project Manager</option>
-						<option value="Developer">Developer</option>
+						<option value="pl_1">Project Lead</option>
+						<option value="pm_1">Project Manager</option>
+						<option value="dev_1">Developer</option>
 					</select>
 				</div>
 
@@ -293,9 +281,9 @@
 				<div class="form-group">
 					<label for="app_permit_done">Done: </label>
 					<select id="app_permit_done" bind:value={newApp.app_permit_done}>
-						<option value="Project Lead">Project Lead</option>
-						<option value="Project Manager">Project Manager</option>
-						<option value="Developer">Developer</option>
+						<option value="pl_1">Project Lead</option>
+						<option value="pm_1">Project Manager</option>
+						<option value="dev_1">Developer</option>
 					</select>
 				</div>
 			</div>
@@ -308,7 +296,7 @@
 </Modal>
 
 <AppModal bind:showAppModal>
-	<h3 slot="header">Edit App</h3>
+	<h3 slot="header" style="margin-top: 10px; margin-bottom: 10px;">Edit App</h3>
 
 	<form on:submit={handleEditApp} class="edit-app-form">
 		<div class="form-group">
@@ -338,7 +326,7 @@
 			</div>
 		</div>
 
-		<h4>Permit Group</h4>
+		<h4 style="margin-top: 5px; margin-bottom: 5px;">Permit Group</h4>
 
 		<div class="modal-content">
 			<div class="modal-left">
@@ -346,9 +334,9 @@
 				<div class="form-group">
 					<label for="app_permit_create">Create: </label>
 					<select id="app_permit_create" bind:value={editApp.app_permit_create}>
-						<option value="Project Lead">Project Lead</option>
-						<option value="Project Manager">Project Manager</option>
-						<option value="Developer">Developer</option>
+						<option value="pl_1">Project Lead</option>
+						<option value="pm_1">Project Manager</option>
+						<option value="dev_1">Developer</option>
 					</select>
 				</div>
 
@@ -356,19 +344,19 @@
 				<div class="form-group">
 					<label for="app_permit_open">Open: </label>
 					<select id="app_permit_open" bind:value={editApp.app_permit_open}>
-						<option value="Project Lead">Project Lead</option>
-						<option value="Project Manager">Project Manager</option>
-						<option value="Developer">Developer</option>
+						<option value="pl_1">Project Lead</option>
+						<option value="pm_1">Project Manager</option>
+						<option value="dev_1">Developer</option>
 					</select>
 				</div>
 
 				<!-- App Permit To-Do List Field -->
 				<div class="form-group">
-					<label for="app_permit_todolist">To-Do List: </label>
-					<select id="app_permit_todolist" bind:value={editApp.app_permit_todolist}>
-						<option value="Project Lead">Project Lead</option>
-						<option value="Project Manager">Project Manager</option>
-						<option value="Developer">Developer</option>
+					<label for="app_permit_todo">To-Do List: </label>
+					<select id="app_permit_todo" bind:value={editApp.app_permit_todo}>
+						<option value="pl_1">Project Lead</option>
+						<option value="pm_1">Project Manager</option>
+						<option value="dev_1">Developer</option>
 					</select>
 				</div>
 			</div>
@@ -378,9 +366,9 @@
 				<div class="form-group">
 					<label for="app_permit_doing">Doing: </label>
 					<select id="app_permit_doing" bind:value={editApp.app_permit_doing}>
-						<option value="Project Lead">Project Lead</option>
-						<option value="Project Manager">Project Manager</option>
-						<option value="Developer">Developer</option>
+						<option value="pl_1">Project Lead</option>
+						<option value="pm_1">Project Manager</option>
+						<option value="dev_1">Developer</option>
 					</select>
 				</div>
 
@@ -388,9 +376,9 @@
 				<div class="form-group">
 					<label for="app_permit_done">Done: </label>
 					<select id="app_permit_done" bind:value={editApp.app_permit_done}>
-						<option value="Project Lead">Project Lead</option>
-						<option value="Project Manager">Project Manager</option>
-						<option value="Developer">Developer</option>
+						<option value="pl_1">Project Lead</option>
+						<option value="pm_1">Project Manager</option>
+						<option value="dev_1">Developer</option>
 					</select>
 				</div>
 			</div>
