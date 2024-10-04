@@ -9,6 +9,7 @@
 	let user = { user_name: '', email: '', active: 1, isAdmin: false, isPL: false };
 	let apps = [];
 	let appDetails = [];
+	let groupNames = [];
 	let showModal = false; // modal for create app
 	let showAppModal = false; // modal for edit app
 	let newApp = { app_acronym: '', app_description: '', app_rnumber: '', app_startdate: '', app_enddate: '', app_permit_create: '', app_permit_open: '', app_permit_todo: '', app_permit_doing: '', app_permit_done: '' };
@@ -20,6 +21,7 @@
 	onMount(async () => {
     await checkStatus();
 		await fetchAllApp();
+		await fetchGroupNames();
   });
 
   const checkStatus = async () => {
@@ -57,6 +59,20 @@
     } catch (error) {
       console.error("Error fetching app details:", error);
       errorMessage = 'Failed to fetch app details';
+    }
+  };
+
+	// fetch all groupNames for dropdown
+	const fetchGroupNames = async () => {
+    try {
+      const response = await axios.get('/api/v1/getAllGroups', { withCredentials: true });
+      if (response.status === 200) {
+        groupNames = response.data.data;
+      } else {
+          errorMessage = 'Failed to load groups.';
+      }
+    } catch (error) {
+      errorMessage = 'Error fetching data';
     }
   };
 
@@ -105,14 +121,14 @@
 				apps = apps;
 				newApp = {};
 		} catch (error) {
-				successMessage = '';
-				if (error.response && error.response.status === 409) {
-						// Catch duplicate entry error
-						errorMessage = 'App already exists';
-				} else {
-						// Catch any other errors
-						errorMessage = 'Error creating app';
-				}
+			successMessage = '';
+			if (error.response && error.response.status === 409) {
+					// Catch duplicate entry error
+					errorMessage = 'App already exists';
+			} else {
+					// Catch any other errors
+					errorMessage = 'Error creating app';
+			}
 		}
   };
 
@@ -208,7 +224,7 @@
 		<!-- App Description Field -->
 		<div class="form-group">
 			<label for="app_description">Description: </label>
-			<textarea id="app_description" bind:value={newApp.app_description}></textarea>
+			<textarea id="app_description" bind:value={newApp.app_description} maxlength="255"></textarea>
 		</div>
 
 		<div class="date-group">
@@ -239,9 +255,9 @@
 				<div class="form-group">
 					<label for="app_permit_create">Create: </label>
 					<select id="app_permit_create" bind:value={newApp.app_permit_create}>
-						<option value="pl_1">Project Lead</option>
-						<option value="pm_1">Project Manager</option>
-						<option value="dev_1">Developer</option>
+						{#each groupNames as group}
+							<option value={group.group_name}>{group.group_name}</option>
+						{/each}
 					</select>
 				</div>
 
@@ -249,9 +265,9 @@
 				<div class="form-group">
 					<label for="app_permit_open">Open: </label>
 					<select id="app_permit_open" bind:value={newApp.app_permit_open}>
-						<option value="pl_1">Project Lead</option>
-						<option value="pm_1">Project Manager</option>
-						<option value="dev_1">Developer</option>
+						{#each groupNames as group}
+							<option value={group.group_name}>{group.group_name}</option>
+						{/each}
 					</select>
 				</div>
 
@@ -259,9 +275,9 @@
 				<div class="form-group">
 					<label for="app_permit_todo">To-Do List: </label>
 					<select id="app_permit_todo" bind:value={newApp.app_permit_todo}>
-						<option value="pl_1">Project Lead</option>
-						<option value="pm_1">Project Manager</option>
-						<option value="dev_1">Developer</option>
+						{#each groupNames as group}
+							<option value={group.group_name}>{group.group_name}</option>
+						{/each}
 					</select>
 				</div>
 			</div>
@@ -271,9 +287,9 @@
 				<div class="form-group">
 					<label for="app_permit_doing">Doing: </label>
 					<select id="app_permit_doing" bind:value={newApp.app_permit_doing}>
-						<option value="pl_1">Project Lead</option>
-						<option value="pm_1">Project Manager</option>
-						<option value="dev_1">Developer</option>
+						{#each groupNames as group}
+							<option value={group.group_name}>{group.group_name}</option>
+						{/each}
 					</select>
 				</div>
 
@@ -281,9 +297,9 @@
 				<div class="form-group">
 					<label for="app_permit_done">Done: </label>
 					<select id="app_permit_done" bind:value={newApp.app_permit_done}>
-						<option value="pl_1">Project Lead</option>
-						<option value="pm_1">Project Manager</option>
-						<option value="dev_1">Developer</option>
+						{#each groupNames as group}
+							<option value={group.group_name}>{group.group_name}</option>
+						{/each}
 					</select>
 				</div>
 			</div>
@@ -306,7 +322,7 @@
 
 		<div class="form-group">
 			<label for="app_description">Description: </label>
-			<textarea id="app_description" bind:value={editApp.app_description}></textarea>
+			<textarea id="app_description" bind:value={editApp.app_description} maxlength="255"></textarea>
 		</div>
 
 		<div class="date-group">
@@ -334,9 +350,9 @@
 				<div class="form-group">
 					<label for="app_permit_create">Create: </label>
 					<select id="app_permit_create" bind:value={editApp.app_permit_create}>
-						<option value="pl_1">Project Lead</option>
-						<option value="pm_1">Project Manager</option>
-						<option value="dev_1">Developer</option>
+						{#each groupNames as group}
+							<option value={group.group_name}>{group.group_name}</option>
+						{/each}
 					</select>
 				</div>
 
@@ -344,9 +360,9 @@
 				<div class="form-group">
 					<label for="app_permit_open">Open: </label>
 					<select id="app_permit_open" bind:value={editApp.app_permit_open}>
-						<option value="pl_1">Project Lead</option>
-						<option value="pm_1">Project Manager</option>
-						<option value="dev_1">Developer</option>
+						{#each groupNames as group}
+							<option value={group.group_name}>{group.group_name}</option>
+						{/each}
 					</select>
 				</div>
 
@@ -354,9 +370,9 @@
 				<div class="form-group">
 					<label for="app_permit_todo">To-Do List: </label>
 					<select id="app_permit_todo" bind:value={editApp.app_permit_todo}>
-						<option value="pl_1">Project Lead</option>
-						<option value="pm_1">Project Manager</option>
-						<option value="dev_1">Developer</option>
+						{#each groupNames as group}
+							<option value={group.group_name}>{group.group_name}</option>
+						{/each}
 					</select>
 				</div>
 			</div>
@@ -366,9 +382,9 @@
 				<div class="form-group">
 					<label for="app_permit_doing">Doing: </label>
 					<select id="app_permit_doing" bind:value={editApp.app_permit_doing}>
-						<option value="pl_1">Project Lead</option>
-						<option value="pm_1">Project Manager</option>
-						<option value="dev_1">Developer</option>
+						{#each groupNames as group}
+							<option value={group.group_name}>{group.group_name}</option>
+						{/each}
 					</select>
 				</div>
 
@@ -376,16 +392,16 @@
 				<div class="form-group">
 					<label for="app_permit_done">Done: </label>
 					<select id="app_permit_done" bind:value={editApp.app_permit_done}>
-						<option value="pl_1">Project Lead</option>
-						<option value="pm_1">Project Manager</option>
-						<option value="dev_1">Developer</option>
+						{#each groupNames as group}
+							<option value={group.group_name}>{group.group_name}</option>
+						{/each}
 					</select>
 				</div>
 			</div>
 		</div>
 
 		<div class="modal-footer">
-			<button type="submit" class="button">Edit App</button>
+			<button type="submit" class="button">Save Changes</button>
 		</div>
 	</form>
 </AppModal>

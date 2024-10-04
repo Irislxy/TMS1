@@ -6,7 +6,7 @@ const { isAuthenticated } = require("../middlewares/verifyJWT")
 const userController = require("../controllers/userController")
 
 router.get("/getUserDetails", isAuthenticated, userController.getUserDetails)
-//router.get("/getAllUser", isAuthenticated, userController.getAllUser)
+router.get("/getAllGroups", isAuthenticated, userController.getAllGroups)
 router.get("/getAllUserWithGroup", isAuthenticated, userController.getAllUserWithGroup)
 router.post("/newUser", isAuthenticated, userController.newUser)
 router.put("/updateEmail", isAuthenticated, userController.updateEmail)

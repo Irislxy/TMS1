@@ -13,11 +13,12 @@ exports.getAllTaskByApp = async (req, res, next) => {
   try {
     // Query to select tasks and plan colour by joining the plan table
     const query = `
-      SELECT task.*, plan.plan_colour 
-      FROM task
-      LEFT JOIN plan 
-      ON task.task_plan = plan.plan_mvp_name 
-      WHERE task.task_app_acronym = ?
+    SELECT DISTINCT task.*, plan.plan_colour 
+    FROM task
+    LEFT JOIN plan 
+    ON task.task_plan = plan.plan_mvp_name and
+    task.task_app_acronym = plan.plan_app_acronym
+    WHERE task.task_app_acronym = ?
     `
 
     const [results] = await pool.execute(query, [task_app_acronym])
@@ -297,7 +298,7 @@ exports.updateNotes = async (req, res, next) => {
     const newNoteEntry = `\n[${new Date().toLocaleString("en-US")}] (${username} - ${task_state}): ${task_notes}`
 
     // Prepend new note to the existing notes
-    const updatedNotes = newNoteEntry + currentNotes
+    const updatedNotes = newNoteEntry + "\n###############################################\n" + currentNotes
 
     // Update task_notes field in the task table
     const updateQuery = "UPDATE task SET task_notes = ? WHERE task_id = ?"
@@ -441,7 +442,7 @@ exports.promoteTask = async (req, res, next) => {
 
         // Send one email to all recipients
         try {
-          await sendEmail(emailList.join(","), subject, message)
+          sendEmail(emailList.join(","), subject, message)
         } catch (emailError) {
           console.error(`Error sending email to ${emailList.join(",")}:`, emailError)
         }

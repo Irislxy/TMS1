@@ -8,6 +8,11 @@
   let errorMessage = '';
   // let isAdmin = false;
 
+  const goToAppList = () => {
+    checkStatus();
+    goto("/appList/"); // Navigate to the profile page
+  };
+
   const goToProfile = () => {
     checkStatus();
     goto("/userProfile/"); // Navigate to the profile page
@@ -74,6 +79,7 @@
       
       <!-- Dropdown menu -->
       <div class="dropdown-menu">
+        <button on:click={goToAppList}>App List</button>
         <button on:click={goToProfile}>View / Edit Profile</button>
         <!-- Show the User Management button only if the user is an admin -->
         {#if user.isAdmin}

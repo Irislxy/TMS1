@@ -271,7 +271,8 @@
     } 
   };
 
-  const handleCreateTask = async () => {
+  const handleCreateTask = async (event) => {
+    event.preventDefault();
     await checkStatus();
     errorMessage = ''; // Reset error message
 		successMessage = ''; // Reset success message
@@ -332,20 +333,39 @@
       }
     }
   };
-
+  
   // Call this when a plan is selected in the done state
   const handlePlanChange = () => {
-    if (taskDetails.task_state === 'done') {
+    if (taskDetails.task_state === 'done' && originalPlan !== taskDetails.task_plan) {
       planChanged = true;
+    } else {
+      planChanged = false;
     }
   };
 
-  // Reset button states when modal is closed or opened
+  $: if (!showTaskModal) {
+    errorMessage = ''; // Reset error message
+		successMessage = ''; // Reset success message
+  }
+
+  $: if (!showPlanModal) {
+    errorMessage = ''; // Reset error message
+		successMessage = ''; // Reset success message
+  }
+
+  $: if (!editPlanModal) {
+    errorMessage = ''; // Reset error message
+		successMessage = ''; // Reset success message
+  }
+
+  // Reset button states when modal is closed and opened
   $: if (!showModal) {
     // Reset when modal is closed
     planChanged = false;
     disableSave = false;
     disablePromote = false;
+    errorMessage = ''; // Reset error message
+		successMessage = ''; // Reset success message
   }
 
   $: {
@@ -501,12 +521,39 @@
         <p><strong>Name:</strong> {taskDetails.task_name}</p>
         <p><strong>Description:</strong> {taskDetails.task_description}</p>
         <p><strong>State:</strong> {taskDetails.task_state}</p>
-        <label for="new-plan"><strong>Plan:</strong> </label>
-        <select bind:value={taskDetails.task_plan} style="width: 60%;" disabled={taskDetails.task_state === 'todo' || taskDetails.task_state === 'doing' || taskDetails.task_state === 'close'} on:change={handlePlanChange}>
-          {#each planNames as plan}
-            <option value={plan.plan_mvp_name}>{plan.plan_mvp_name}</option>
-          {/each}
-        </select>
+        {#if taskDetails.task_state == 'open'}
+          <label for="new-plan"><strong>Plan:</strong> </label>
+          <select bind:value={taskDetails.task_plan} style="width: 60%;" disabled={taskDetails.task_state === 'todo' || taskDetails.task_state === 'doing' || taskDetails.task_state === 'close' || canOpenTask == false} on:change={handlePlanChange}>
+            <option value={null}></option>
+            {#each planNames as plan}
+              <option value={plan.plan_mvp_name}>{plan.plan_mvp_name}</option>
+            {/each}
+          </select>
+        {:else if taskDetails.task_state == 'todo'}
+          <label for="new-plan"><strong>Plan:</strong> </label>
+          <select bind:value={taskDetails.task_plan} style="width: 60%;" disabled on:change={handlePlanChange}>
+            <option value={null}></option>
+            {#each planNames as plan}
+              <option value={plan.plan_mvp_name}>{plan.plan_mvp_name}</option>
+            {/each}
+          </select>
+        {:else if taskDetails.task_state == 'doing'}
+          <label for="new-plan"><strong>Plan:</strong> </label>
+          <select bind:value={taskDetails.task_plan} style="width: 60%;" disabled on:change={handlePlanChange}>
+            <option value={null}></option>
+            {#each planNames as plan}
+              <option value={plan.plan_mvp_name}>{plan.plan_mvp_name}</option>
+            {/each}
+          </select>
+        {:else if taskDetails.task_state == 'done'}
+          <label for="new-plan"><strong>Plan:</strong> </label>
+          <select bind:value={taskDetails.task_plan} style="width: 60%;" disabled={taskDetails.task_state === 'todo' || taskDetails.task_state === 'doing' || taskDetails.task_state === 'close' || canDoneTask == false} on:change={handlePlanChange}>
+            <option value={null}></option>
+            {#each planNames as plan}
+              <option value={plan.plan_mvp_name}>{plan.plan_mvp_name}</option>
+            {/each}
+          </select>
+        {/if}
         <p><strong>Creator:</strong> {taskDetails.task_creator}</p>
         <p><strong>Owner:</strong> {taskDetails.task_owner}</p>
         <p><strong>Created date:</strong> {taskDetails.task_createdate}</p>
@@ -519,7 +566,15 @@
           <textarea id="notes" style="height: 100px;" disabled>{taskDetails.task_notes}</textarea>
         </div>
         <div class="notes-area">
-          <textarea id="userNotes" bind:value={newNotes} style="height: 100px;" disabled={taskDetails.task_state === 'close'} placeholder="Enter notes here..."></textarea>
+          {#if taskDetails.task_state == 'open'}
+            <textarea id="userNotes" bind:value={newNotes} style="height: 100px;" disabled={taskDetails.task_state === 'close' || canOpenTask == false} placeholder="Enter notes here..."></textarea>
+          {:else if taskDetails.task_state == 'todo'}
+            <textarea id="userNotes" bind:value={newNotes} style="height: 100px;" disabled={taskDetails.task_state === 'close' || canTodoTask == false} placeholder="Enter notes here..."></textarea>
+          {:else if taskDetails.task_state == 'doing'}
+            <textarea id="userNotes" bind:value={newNotes} style="height: 100px;" disabled={taskDetails.task_state === 'close' || canDoingTask == false} placeholder="Enter notes here..."></textarea>
+          {:else if taskDetails.task_state == 'done'}
+            <textarea id="userNotes" bind:value={newNotes} style="height: 100px;" disabled={taskDetails.task_state === 'close' || canDoneTask == false} placeholder="Enter notes here..."></textarea>
+          {/if}
         </div>
       </div>
     </div>
@@ -680,7 +735,7 @@
     </div>
 
     <div class="modal-footer">
-      <button type="submit" class="button">Edit Plan</button>
+      <button type="submit" class="button">Save Changes</button>
     </div>
   </form>
 </EditPlanModal>

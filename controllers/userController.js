@@ -67,6 +67,22 @@ exports.getAllUserWithGroup = async (req, res, next) => {
   }
 }
 
+exports.getAllGroups = async (req, res, next) => {
+  try {
+    const query = `SELECT group_name FROM group_list ORDER BY group_name`
+
+    const [results] = await pool.query(query)
+
+    // Send response with group names
+    return res.status(200).json({
+      success: true,
+      data: results
+    })
+  } catch (error) {
+    return next(new ErrorHandler("Error while getting groups", 500))
+  }
+}
+
 // Create new user => /api/v1/newUser
 exports.newUser = async (req, res, next) => {
   let username = req.user.username
