@@ -9,8 +9,7 @@ const errorMiddleware = require("./middlewares/errors")
 const cors = require("cors")
 const cookieParser = require("cookie-parser")
 
-// Setting up config.env file variables
-dotenv.config({ path: "./config/config.env" })
+dotenv.config({ path: "./.env" })
 
 // Enable CORS
 app.use(
